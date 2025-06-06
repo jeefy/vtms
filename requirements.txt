@@ -1,0 +1,4 @@
+obd
+requests
+paho-mqtt
+obd-socketio
