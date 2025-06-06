@@ -31,7 +31,7 @@ docker run --detach \
     containrrr/watchtower
 
 # Start the OBD2 Client
-docker run -d --restart=always --privileged -v /dev:/dev jeefy/vtms:latest
+docker run -d --restart=always --privileged -v /dev:/dev ghcr.io/jeefy/vtms:main
 
 echo "Installation complete. You can access Cockpit at https://<your-server-ip>:9090"
 echo "OBD2 Client is running in the background."
