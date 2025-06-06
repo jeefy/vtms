@@ -1,0 +1,8 @@
+__pycache__
+data
+include
+lib
+.venv
+pyvenv.cfg
+Makefile
+install.sh
