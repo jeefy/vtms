@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Check to see if TAILSCALE_AUTH_KEY is set
-if [ -z "${TAILSCALE_AUTH_KEY}" ]; then
+if [[ -z "${TAILSCALE_AUTH_KEY}" ]]; then
     echo "Error: TAILSCALE_AUTH_KEY is not set. Please set it before running this script."
     exit 1
 fi
