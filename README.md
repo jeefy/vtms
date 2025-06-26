@@ -4,7 +4,7 @@
 
 ```
 export TAILSCALE_AUTH_KEY=a-tailscale-auth-key
-curl -sf -L https://raw.githubusercontent.com/jeefy/vtms/refs/heads/main/install.sh | sudo sh -
+curl -sf -L https://raw.githubusercontent.com/jeefy/vtms/refs/heads/main/install.sh | sudo -E sh -
 ```
 
 ## How to run
