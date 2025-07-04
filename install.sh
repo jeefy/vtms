@@ -8,6 +8,9 @@ fi
 
 # Prerequisites
 echo "Installing pre-requisites..."
+
+export DEBIAN_FRONTEND=noninteractive
+
 apt update
 
 apt install -y docker.io
