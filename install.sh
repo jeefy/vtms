@@ -36,5 +36,9 @@ docker run --detach \
 # Start the OBD2 Client
 docker run -d --restart=always --privileged -v /dev:/dev ghcr.io/jeefy/vtms:main
 
-echo "Installation complete. You can access Cockpit at https://<your-server-ip>:9090"
+TAILSCALE_IP=""
+TAILSCALE_IP=$(sudo tailscale ip 2>&1 | head -n 1)
+export TAILSCALE_IP
+
+echo "Installation complete. You can access Cockpit at https://${TAILSCALE_IP}:9090"
 echo "OBD2 Client is running in the background."
