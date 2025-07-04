@@ -22,7 +22,7 @@ systemctl enable --now cockpit.socket
 
 curl -fsSL https://tailscale.com/install.sh | sh
 
-tailscale up --accept-routes --exit-node="archives.taildc7e6.ts.net" --exit-node-allow-lan-access=true --auth-key="${TAILSCALE_AUTH_KEY}" 
+tailscale up --accept-routes --exit-node="100.90.165.127" --exit-node-allow-lan-access=true --auth-key="${TAILSCALE_AUTH_KEY}" 
 
 # Start this for OTA Updates
 docker run --detach \
