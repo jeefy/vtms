@@ -2,3 +2,4 @@ obd
 requests
 paho-mqtt
 obd-socketio
+RPi.GPIO
