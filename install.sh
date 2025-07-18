@@ -30,11 +30,17 @@ tailscale up --accept-routes --exit-node="100.90.165.127" --exit-node-allow-lan-
 # Start this for OTA Updates
 docker run --detach \
     --name watchtower \
+    --restart="always" \
     --volume /var/run/docker.sock:/var/run/docker.sock \
     containrrr/watchtower
 
 # Start the OBD2 Client
-docker run -d --restart=always --privileged -v /dev:/dev ghcr.io/jeefy/vtms:main
+docker run -d \
+    --privileged \
+    --name="vtms" \
+    --restart="always" \
+    --privileged \
+    -v /dev:/dev ghcr.io/jeefy/vtms:main
 
 TAILSCALE_IP=""
 TAILSCALE_IP=$(sudo tailscale ip 2>&1 | head -n 1)
