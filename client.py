@@ -2,7 +2,7 @@ import obd
 from obd import OBDStatus
 
 import time
-from src import myobd, config, led
+from src import myobd, config #, led
 from functools import partial
 
 import paho.mqtt.client as mqtt
@@ -24,7 +24,7 @@ def on_message(client, userdata, msg, obd2=None, mqttc=None):
     payload = str(msg.payload.decode("utf-8"))
     
     print(msg.topic+" " + payload)
-    led.handler(msg, mqttc=mqttc)
+    #led.handler(msg, mqttc=mqttc)
 
     if msg.topic == 'lemons/obd2/watch':
         if payload in obd.commands:

@@ -40,6 +40,7 @@ docker run -d \
     --name="vtms" \
     --restart="always" \
     --privileged \
+    -v ~/vtms:/app/data \
     -v /dev:/dev ghcr.io/jeefy/vtms:main
 
 TAILSCALE_IP=""
