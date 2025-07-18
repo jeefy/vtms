@@ -1,4 +1,4 @@
-from .db import db_write
+# from .db import db_write
 from .config import getDebug
 import time
 
@@ -125,7 +125,7 @@ def new_monitor(r, mqttc):
         print(str(r.value))
         print('----')
 
-    db_write("INSERT INTO monitor VALUES(?, ?, ?)", (r.command.name, str(r.value), time.time()))
+    # db_write("INSERT INTO monitor VALUES(?, ?, ?)", (r.command.name, str(r.value), time.time()))
 
     mqttc.publish("lemons/{}".format(r.command.name), str(r.value))
 
@@ -137,6 +137,6 @@ def new_metric(r, mqttc):
     if getDebug():
         print('OBD2 - New Metric: {} - {}'.format(r.command.name,  r.value.magnitude))
     
-    db_write("INSERT INTO telemetry VALUES(?, ?, ?, ?)", (r.command.name, str(r.value.magnitude), str(r.messages), r.time))
+    # db_write("INSERT INTO telemetry VALUES(?, ?, ?, ?)", (r.command.name, str(r.value.magnitude), str(r.messages), r.time))
 
     mqttc.publish("lemons/{}".format(r.command.name), str(r.value))
