@@ -13,5 +13,8 @@ client:
 image:
 	docker build -t $(WHOAMI)/vtms:latest .
 
+make image-run: image
+	docker run -v ./data/:/app/data --privileged --rm --name vtms $(WHOAMI)/vtms:latest
+
 make image-push: image
 	docker push $(WHOAMI)/vtms:latest

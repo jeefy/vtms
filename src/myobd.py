@@ -111,7 +111,7 @@ def new_dtc(r, mqttc):
     for dtc in r.value:
         if getDebug():
             print('OBD2 - New DTC: ', dtc)
-        mqttc.publish("paho/DTC/" +  dtc[0], dtc[1])
+        mqttc.publish("lemons/DTC/" +  dtc[0], dtc[1])
 
 
 def new_monitor(r, mqttc):
@@ -127,7 +127,7 @@ def new_monitor(r, mqttc):
 
     db_write("INSERT INTO monitor VALUES(?, ?, ?)", (r.command.name, str(r.value), time.time()))
 
-    mqttc.publish("paho/{}".format(r.command.name), str(r.value))
+    mqttc.publish("lemons/{}".format(r.command.name), str(r.value))
 
 def new_metric(r, mqttc):
     # Skip if null value
@@ -139,4 +139,4 @@ def new_metric(r, mqttc):
     
     db_write("INSERT INTO telemetry VALUES(?, ?, ?, ?)", (r.command.name, str(r.value.magnitude), str(r.messages), r.time))
 
-    mqttc.publish("paho/{}".format(r.command.name), str(r.value))
+    mqttc.publish("lemons/{}".format(r.command.name), str(r.value))
