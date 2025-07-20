@@ -2,10 +2,10 @@
 
 import time
 import paho.mqtt.client as mqtt
-from src.db import db_conn
+import sqlite3
 from src import config
 
-print('<h3>Not Fast Not Furious!</h3>')
+print('Not Fast Not Furious!')
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, reason_code, properties):
@@ -20,7 +20,9 @@ def on_message(client, userdata, msg):
     cur.execute("INSERT INTO telemetry VALUES(?, ?, ?)", (msg.topic, msg.payload, time.time()))
 
 
-cur, con = db_conn("data/mosquitto.db")
+con = sqlite3.connect('data/logger.db', check_same_thread=False)
+cur = con.cursor()
+cur.execute("CREATE TABLE IF NOT EXISTS telemetry(metric, value, timestamp)")
 
 mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 mqttc.on_connect = on_connect

@@ -1,11 +1,14 @@
 import obd
 from obd import OBDStatus
 
-import time
-from src import myobd, config #, led
+from src import myobd, config
 from functools import partial
 
 import paho.mqtt.client as mqtt
+
+is_pi = config.is_raspberrypi()
+if is_pi:
+    from src import led
 
 # Need them ol' Debug flags
 
@@ -15,16 +18,16 @@ def on_connect(client, userdata, flags, reason_code, properties):
         print(f"Connected with result code {reason_code}")
     # Subscribing in on_connect() means that if we lose the connection and
     # reconnect then subscriptions will be renewed.
-    #client.subscribe("$SYS/#")
     client.subscribe("lemons/#")
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg, obd2=None, mqttc=None):
-    #if '$SYS' not in msg.topic:
     payload = str(msg.payload.decode("utf-8"))
     
     print(msg.topic+" " + payload)
-    #led.handler(msg, mqttc=mqttc)
+    
+    if is_pi:
+        led.handler(msg, mqttc=mqttc)
 
     if msg.topic == 'lemons/obd2/watch':
         if payload in obd.commands:
@@ -76,7 +79,6 @@ while True:
     print(ports)
     print('----')
     for port in ports:
-    #port = '/dev/ttyUSB0'
         connection = obd.Async(port, delay_cmds=0, fast=True)
 
         if connection.status() is not OBDStatus.CAR_CONNECTED:
