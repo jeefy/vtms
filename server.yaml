@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vtms-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vtms-server
+  template:
+    metadata:
+      labels:
+        app: vtms-server
+    spec:
+      containers:
+        - name: vtms-server
+          image: ghcr.io/jeefy/vtms:main
+          command: ["python3", "-u", "server.py"]
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: vtms-data
+              mountPath: /app/data
+              subPath: vtms
+      volumes:
+        - name: vtms-data
+          persistentVolumeClaim:
+            claimName: prometheus-operator-grafana
+      
+      restartPolicy: Always

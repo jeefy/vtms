@@ -11,12 +11,9 @@ echo "Installing pre-requisites..."
 
 export DEBIAN_FRONTEND=noninteractive
 
-apt update
+apt update && apt upgrade -y
 
-apt install -y docker.io
-
-systemctl start docker
-systemctl enable docker
+curl -sSL https://get.docker.com | sh
 
 docker info
 
