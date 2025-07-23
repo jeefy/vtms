@@ -29,7 +29,7 @@ docker run --detach \
     --name watchtower \
     --restart="always" \
     --volume /var/run/docker.sock:/var/run/docker.sock \
-    containrrr/watchtower
+    containrrr/watchtower --interval 120
 
 # Start the OBD2 Client
 docker run -d \

@@ -4,6 +4,8 @@ from obd import OBDStatus
 from src import myobd, config
 from functools import partial
 
+import time
+
 import paho.mqtt.client as mqtt
 
 is_pi = config.is_raspberrypi()
@@ -78,6 +80,12 @@ while True:
     print('Possible ports: ')
     print(ports)
     print('----')
+
+    if len(ports) == 0:
+        print('OBD2 - No OBDII ports found. Sleeping for 15s then retrying...')
+        time.sleep(15)
+        continue
+
     for port in ports:
         connection = obd.Async(port, delay_cmds=0, fast=True)
 
