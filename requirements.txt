@@ -1,3 +1,5 @@
 obd
 paho-mqtt
 RPi.GPIO
+py-gpsd2
+pyserial
