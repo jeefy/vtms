@@ -122,10 +122,10 @@ class VTMSClient:
                 
                 # Publish GPS data to MQTT topics
                 gps_data = {
-                    "lemons/gps/pos": packet.position(),
-                    "lemons/gps/speed": packet.speed(),
-                    "lemons/gps/altitude": packet.altitude(),
-                    "lemons/gps/track": packet.track()
+                    "lemons/gps/pos": str(packet.lat) + "," + str(packet.lon),
+                    "lemons/gps/speed": str(packet.speed),
+                    "lemons/gps/altitude": str(packet.altitude),
+                    "lemons/gps/track": str(packet.track)
                 }
                 
                 published_count = 0
@@ -335,7 +335,7 @@ class VTMSClient:
                 continue
 
             for port in ports:
-                self.obd_connection = obd.Async(port, delay_cmds=0, fast=True)
+                self.obd_connection = obd.Async(port, timeout=5, delay_cmds=0, start_low_power=True, fast=True)
 
                 if self.obd_connection.status() is not OBDStatus.CAR_CONNECTED:
                     logger.warning(f'No connection to OBDII port from {port}')
