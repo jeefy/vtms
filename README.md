@@ -17,7 +17,7 @@ docker run --detach \
     containrrr/watchtower
 
 # Start the OBD2 Client
-docker run -d --restart=always --privileged -v /dev:/dev ghcr.io/jeefy/vtms:main
+docker run -d --restart=always --network=host --privileged -v /dev:/dev ghcr.io/jeefy/vtms:main
 ```
 
 ## TODO
