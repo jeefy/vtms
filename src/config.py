@@ -2,7 +2,7 @@
 Configuration module for VTMS
 """
 
-import io
+import io, os
 from typing import Optional
 
 
@@ -19,6 +19,13 @@ class Config:
         self._gps_port = None  # Auto-discover if None
         self._gps_baudrate = 9600
         self._gps_enabled = True
+        
+        # PostgreSQL configuration
+        self._postgres_host = "my-release-postgresql.monitoring.svc.cluster.local"
+        self._postgres_port = 5432
+        self._postgres_database = "vtms"
+        self._postgres_user = os.environ.get("POSTGRES_USER", "default_user")  # Use environment variable or default
+        self._postgres_password = os.environ.get("POSTGRES_PASSWORD", "default_password")  # Use environment variable or default
     
     @property
     def debug(self) -> bool:
@@ -72,6 +79,46 @@ class Config:
     def gps_enabled(self, value: bool):
         self._gps_enabled = value
     
+    @property
+    def postgres_host(self) -> str:
+        return self._postgres_host
+    
+    @postgres_host.setter
+    def postgres_host(self, value: str):
+        self._postgres_host = value
+    
+    @property
+    def postgres_port(self) -> int:
+        return self._postgres_port
+    
+    @postgres_port.setter
+    def postgres_port(self, value: int):
+        self._postgres_port = value
+    
+    @property
+    def postgres_database(self) -> str:
+        return self._postgres_database
+    
+    @postgres_database.setter
+    def postgres_database(self, value: str):
+        self._postgres_database = value
+    
+    @property
+    def postgres_user(self) -> str:
+        return self._postgres_user
+    
+    @postgres_user.setter
+    def postgres_user(self, value: str):
+        self._postgres_user = value
+    
+    @property
+    def postgres_password(self) -> str:
+        return self._postgres_password
+    
+    @postgres_password.setter
+    def postgres_password(self, value: str):
+        self._postgres_password = value
+
     @staticmethod
     def is_raspberrypi() -> bool:
         """Check if running on Raspberry Pi"""
