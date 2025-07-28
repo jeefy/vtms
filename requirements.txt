@@ -3,3 +3,4 @@ paho-mqtt
 RPi.GPIO
 pynmea2
 pyserial
+psycopg2-binary
