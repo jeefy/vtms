@@ -16,6 +16,9 @@ class Config:
         self._mqtt_keepalive = 60
         self._obd_retry_delay = 15
         self._gps_update_interval = 1
+        self._gps_port = None  # Auto-discover if None
+        self._gps_baudrate = 9600
+        self._gps_enabled = True
     
     @property
     def debug(self) -> bool:
@@ -45,6 +48,30 @@ class Config:
     def gps_update_interval(self) -> int:
         return self._gps_update_interval
     
+    @property
+    def gps_port(self) -> Optional[str]:
+        return self._gps_port
+    
+    @gps_port.setter
+    def gps_port(self, value: Optional[str]):
+        self._gps_port = value
+    
+    @property
+    def gps_baudrate(self) -> int:
+        return self._gps_baudrate
+    
+    @gps_baudrate.setter
+    def gps_baudrate(self, value: int):
+        self._gps_baudrate = value
+    
+    @property
+    def gps_enabled(self) -> bool:
+        return self._gps_enabled
+    
+    @gps_enabled.setter
+    def gps_enabled(self, value: bool):
+        self._gps_enabled = value
+    
     @staticmethod
     def is_raspberrypi() -> bool:
         """Check if running on Raspberry Pi"""
@@ -68,6 +95,14 @@ def setDebug(val: bool):
 def getDebug() -> bool:
     """Get debug mode (legacy function)"""
     return _config.debug
+
+def getGpsEnabled() -> bool:
+    """Get GPS enabled status (legacy function)"""
+    return _config.gps_enabled
+
+def getObdEnabled() -> bool:
+    """Get OBD enabled status (legacy function)"""
+    return True  # OBD is always enabled by default
 
 def is_raspberrypi() -> bool:
     """Check if running on Raspberry Pi (legacy function)"""

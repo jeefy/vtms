@@ -14,10 +14,14 @@ from collections import deque
 import json
 
 try:
-    import gpsd2
+    import pynmea2
+    import serial
+    GPS_AVAILABLE = True
 except ImportError:
-    gpsd2 = None
-    logging.warning("gpsd2 module not available - GPS functionality will be disabled")
+    pynmea2 = None
+    serial = None
+    GPS_AVAILABLE = False
+    logging.warning("pynmea2 or pyserial not available - GPS functionality will be disabled")
 
 import obd
 import paho.mqtt.client as mqtt
@@ -48,6 +52,11 @@ class VTMSClient:
         self.obd_connection: Optional[obd.Async] = None
         self.is_pi = config.is_raspberrypi()
         self.led_handler = None
+        
+        # GPS connection
+        self.gps_serial = None  # Will be serial.Serial object when connected
+        self.gps_port = config.config.gps_port
+        self.gps_baudrate = config.config.gps_baudrate
         
         # MQTT connection state and buffering
         self.mqtt_connected = False
@@ -102,48 +111,209 @@ class VTMSClient:
             logger.error(f"Failed to setup MQTT: {e}")
             return False
     
+    def discover_gps_ports(self):
+        """Discover available GPS serial ports"""
+        if not GPS_AVAILABLE:
+            return []
+            
+        import serial.tools.list_ports
+        
+        # Common GPS device patterns
+        gps_patterns = [
+            #'ttyUSB',    # USB GPS devices
+            'ttyACM',    # USB GPS devices with CDC-ACM drivers
+            #'ttyAMA',    # Raspberry Pi GPIO UART
+            #'ttyS',      # Traditional serial ports
+        ]
+        
+        possible_ports = []
+        ports = serial.tools.list_ports.comports()
+        
+        for port in ports:
+            for pattern in gps_patterns:
+                if pattern in port.device:
+                    possible_ports.append(port.device)
+                    logger.info(f"Found potential GPS port: {port.device} - {port.description}")
+        
+        return possible_ports
+    
+    async def setup_gps_connection(self) -> bool:
+        """Establish GPS serial connection"""
+        if not GPS_AVAILABLE:
+            logger.warning("GPS functionality disabled - pynmea2 or pyserial not available")
+            return False
+            
+        logger.info("Setting up GPS connection...")
+        
+        # If no specific port is configured, try to discover GPS ports
+        if not self.gps_port:
+            possible_ports = self.discover_gps_ports()
+            if not possible_ports:
+                logger.warning("No potential GPS ports found")
+                return False
+        else:
+            possible_ports = [self.gps_port]
+        
+        # Try each possible port
+        for port in possible_ports:
+            try:
+                logger.info(f"Attempting GPS connection on {port}")
+                self.gps_serial = serial.Serial(
+                    port, 
+                    self.gps_baudrate, 
+                    timeout=2,
+                    parity=serial.PARITY_NONE,
+                    stopbits=serial.STOPBITS_ONE,
+                    bytesize=serial.EIGHTBITS
+                )
+                
+                # Test the connection by reading a few lines
+                test_lines = 0
+                for _ in range(10):  # Try to read up to 10 lines
+                    try:
+                        line = self.gps_serial.readline().decode('ascii', errors='ignore').strip()
+                        if line.startswith('$') and ',' in line:
+                            # Looks like NMEA data
+                            test_lines += 1
+                            if test_lines >= 2:  # We've seen valid NMEA data
+                                self.gps_port = port
+                                logger.info(f"GPS connected successfully on {port}")
+                                return True
+                    except Exception:
+                        continue
+                
+                # If we get here, no valid NMEA data was found
+                self.gps_serial.close()
+                self.gps_serial = None
+                logger.warning(f"No valid NMEA data found on {port}")
+                
+            except Exception as e:
+                logger.warning(f"Failed to connect to GPS on {port}: {e}")
+                if self.gps_serial:
+                    try:
+                        self.gps_serial.close()
+                    except:
+                        pass
+                    self.gps_serial = None
+                continue
+        
+        logger.error("Failed to establish GPS connection on any port")
+        return False
+    
     async def start_gps_monitoring(self):
         """Background task for GPS data collection and publishing"""
         logger.info("Starting GPS monitoring")
         
-        if not gpsd2:
-            logger.warning("GPS monitoring disabled - gpsd2 module not available")
+        if not GPS_AVAILABLE:
+            logger.warning("GPS monitoring disabled - pynmea2 or pyserial not available")
             # Keep the task alive but do nothing
             while True:
                 await asyncio.sleep(60)
+        
+        # Try to establish GPS connection
+        if not await self.setup_gps_connection():
+            logger.error("Failed to setup GPS connection, GPS monitoring disabled")
+            while True:
+                await asyncio.sleep(60)
                 
+        logger.info("GPS monitoring started successfully")
+        
+        # GPS data storage
+        last_gps_data = {
+            'latitude': None,
+            'longitude': None,
+            'altitude': None,
+            'speed': None,
+            'track': None,
+            'timestamp': None
+        }
+        
         while True:
             try:
-                # Connect to local gpsd
-                gpsd2.connect()
+                if not self.gps_serial or not self.gps_serial.is_open:
+                    logger.warning("GPS connection lost, attempting to reconnect...")
+                    if not await self.setup_gps_connection():
+                        logger.error("Failed to reconnect GPS")
+                        await asyncio.sleep(30)
+                        continue
                 
-                # Get GPS position data
-                packet = gpsd2.get_current()
+                # Read NMEA sentences from GPS
+                try:
+                    line = self.gps_serial.readline().decode('ascii', errors='ignore').strip()
+                    if not line.startswith('$'):
+                        continue
+                        
+                    # Parse NMEA sentence
+                    try:
+                        msg = pynmea2.parse(line)
+                        
+                        # Process different NMEA sentence types
+                        if hasattr(msg, 'latitude') and hasattr(msg, 'longitude'):
+                            # GGA, GLL, RMC sentences contain position data
+                            if msg.latitude and msg.longitude:
+                                last_gps_data['latitude'] = float(msg.latitude)
+                                last_gps_data['longitude'] = float(msg.longitude)
+                                last_gps_data['timestamp'] = time.time()
+                        
+                        if hasattr(msg, 'altitude') and msg.altitude:
+                            last_gps_data['altitude'] = float(msg.altitude)
+                            
+                        if hasattr(msg, 'spd_over_grnd') and msg.spd_over_grnd:
+                            # Speed in knots, convert to m/s
+                            last_gps_data['speed'] = float(msg.spd_over_grnd) * 0.514444
+                            
+                        if hasattr(msg, 'true_course') and msg.true_course:
+                            last_gps_data['track'] = float(msg.true_course)
+                            
+                    except (pynmea2.ParseError, ValueError) as e:
+                        # Skip invalid NMEA sentences
+                        if config.getDebug():
+                            logger.debug(f"Failed to parse NMEA sentence: {line} - {e}")
+                        continue
                 
-                # Publish GPS data to MQTT topics
-                gps_data = {
-                    "lemons/gps/pos": str(packet.lat) + "," + str(packet.lon),
-                    "lemons/gps/speed": str(packet.speed),
-                    "lemons/gps/altitude": str(packet.altitude),
-                    "lemons/gps/track": str(packet.track)
-                }
+                except Exception as e:
+                    logger.error(f"Error reading GPS data: {e}")
+                    await asyncio.sleep(1)
+                    continue
                 
-                published_count = 0
-                for topic, value in gps_data.items():
-                    if value is not None:
-                        self._publish_message(topic, str(value))
-                        published_count += 1
-                
-                if config.getDebug():
-                    logger.debug(f'GPS data published: {published_count} topics, position: {packet.position()}')
+                # Publish GPS data if we have valid position
+                if (last_gps_data['latitude'] is not None and 
+                    last_gps_data['longitude'] is not None):
+                    
+                    # Publish individual GPS topics
+                    gps_data = {
+                        "lemons/gps/pos": f"{last_gps_data['latitude']},{last_gps_data['longitude']}",
+                        "lemons/gps/latitude": str(last_gps_data['latitude']),
+                        "lemons/gps/longitude": str(last_gps_data['longitude']),
+                    }
+                    
+                    if last_gps_data['speed'] is not None:
+                        gps_data["lemons/gps/speed"] = str(last_gps_data['speed'])
+                        
+                    if last_gps_data['altitude'] is not None:
+                        gps_data["lemons/gps/altitude"] = str(last_gps_data['altitude'])
+                        
+                    if last_gps_data['track'] is not None:
+                        gps_data["lemons/gps/track"] = str(last_gps_data['track'])
+                    
+                    published_count = 0
+                    for topic, value in gps_data.items():
+                        if value is not None and value != "None":
+                            self._publish_message(topic, value)
+                            published_count += 1
+                    
+                    if config.getDebug():
+                        logger.debug(f'GPS data published: {published_count} topics, '
+                                   f'position: {last_gps_data["latitude"]},{last_gps_data["longitude"]}')
                 
             except Exception as e:
                 logger.error(f"GPS error: {e}")
                 # Wait a bit longer on error before retrying
-                await asyncio.sleep(1)
+                await asyncio.sleep(10)
                 continue
             
-            await asyncio.sleep(config.config.gps_update_interval)
+            # Small delay to prevent overwhelming the CPU
+            await asyncio.sleep(1)
 
     def _publish_message(self, topic: str, payload, qos: int = 0, retain: bool = False):
         """Publish message with automatic buffering if disconnected"""
@@ -395,9 +565,12 @@ class VTMSClient:
         tasks = []
         
         # Start GPS monitoring task
-        gps_task = asyncio.create_task(self.start_gps_monitoring())
-        tasks.append(gps_task)
-        logger.info("GPS monitoring task started")
+        if config.getGpsEnabled():
+            gps_task = asyncio.create_task(self.start_gps_monitoring())
+            tasks.append(gps_task)
+            logger.info("GPS monitoring task started")
+        else:
+            logger.info("GPS monitoring disabled by configuration")
         
         # Start OBD2 setup and monitoring task
         obd_task = asyncio.create_task(self._run_obd_monitoring())
@@ -442,6 +615,11 @@ class VTMSClient:
             if self.obd_connection:
                 self.obd_connection.stop()
                 logger.info("OBD2 connection stopped")
+            
+            # Stop GPS connection
+            if self.gps_serial and self.gps_serial.is_open:
+                self.gps_serial.close()
+                logger.info("GPS connection stopped")
             
             # Stop MQTT
             if self.mqttc:
