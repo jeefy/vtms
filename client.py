@@ -234,7 +234,7 @@ class VTMSClient:
                     logger.warning("GPS connection lost, attempting to reconnect...")
                     if not await self.setup_gps_connection():
                         logger.error("Failed to reconnect GPS")
-                        await asyncio.sleep(30)
+                        await asyncio.sleep(5)
                         continue
                 
                 # Read NMEA sentences from GPS
@@ -273,7 +273,7 @@ class VTMSClient:
                 
                 except Exception as e:
                     logger.error(f"Error reading GPS data: {e}")
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(5)
                     continue
                 
                 # Publish GPS data if we have valid position
@@ -309,11 +309,11 @@ class VTMSClient:
             except Exception as e:
                 logger.error(f"GPS error: {e}")
                 # Wait a bit longer on error before retrying
-                await asyncio.sleep(10)
+                await asyncio.sleep(5)
                 continue
             
             # Small delay to prevent overwhelming the CPU
-            await asyncio.sleep(1)
+            await asyncio.sleep(5)
 
     def _publish_message(self, topic: str, payload, qos: int = 0, retain: bool = False):
         """Publish message with automatic buffering if disconnected"""

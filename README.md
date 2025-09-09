@@ -4,6 +4,7 @@
 
 ```
 export TAILSCALE_AUTH_KEY=a-tailscale-auth-key
+sudo nmcli device wifi hotspot ssid vtms password REDACTED_HOTSPOT_PASSWORD
 curl -sf -L https://raw.githubusercontent.com/jeefy/vtms/refs/heads/main/install.sh | sudo -E sh -
 ```
 
