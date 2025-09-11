@@ -12,6 +12,7 @@ from functools import partial
 from typing import Optional
 from collections import deque
 import json
+import pygeohash
 
 try:
     import pynmea2
@@ -279,12 +280,19 @@ class VTMSClient:
                 # Publish GPS data if we have valid position
                 if (last_gps_data['latitude'] is not None and 
                     last_gps_data['longitude'] is not None):
+
+                    geohash = pygeohash.encode(
+                        last_gps_data['latitude'], 
+                        last_gps_data['longitude'], 
+                        precision=12
+                    )
                     
                     # Publish individual GPS topics
                     gps_data = {
                         "lemons/gps/pos": f"{last_gps_data['latitude']},{last_gps_data['longitude']}",
                         "lemons/gps/latitude": str(last_gps_data['latitude']),
                         "lemons/gps/longitude": str(last_gps_data['longitude']),
+                        "lemons/gps/geohash": geohash
                     }
                     
                     if last_gps_data['speed'] is not None:
