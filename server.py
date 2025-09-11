@@ -22,8 +22,8 @@ def on_message(client, userdata, msg):
         print(f"{msg.topic} {payload_str}")
         
         # Use parameterized query for PostgreSQL
-        cur.execute("INSERT INTO telemetry (metric, value, timestamp) VALUES (%s, %s, now())", 
-                   (msg.topic, payload_str, time.time()))
+        cur.execute("INSERT INTO telemetry (metric, value) VALUES (%s, %s)", 
+                   (msg.topic, payload_str))
         con.commit()  # Commit each transaction
         
     except Exception as e:
@@ -65,7 +65,7 @@ try:
             id SERIAL PRIMARY KEY,
             metric VARCHAR(255) NOT NULL,
             value TEXT,
-            timestamp TIMESTAMP NOT NULL,
+            timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
