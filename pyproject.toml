@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vtms-sdr"
+version = "0.1.0"
+description = "RTL-SDR audio recorder and frequency scanner"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "pyrtlsdr>=0.3.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "click>=8.1.0",
+    "soundfile>=0.12.0",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+transcribe = [
+    "faster-whisper>=1.0.0",
+    "noisereduce>=3.0.0",
+]
+monitor = [
+    "sounddevice>=0.4.6",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[project.scripts]
+vtms-sdr = "vtms_sdr.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv]
+python-preference = "system"
+default-groups = ["dev", "transcribe", "monitor"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
