@@ -161,6 +161,7 @@ class MonitorUI:
     GAIN_MIN = 0.0
     GAIN_MAX = 50.0
     PPM_STEP = 1
+    AUTOTUNE_STATUS_DURATION = 5.0  # seconds to show auto-tune result
 
     # Color pair constants
     COLOR_TITLE = 1
@@ -169,6 +170,7 @@ class MonitorUI:
     COLOR_VOLUME = 4
     COLOR_FOOTER = 5
     COLOR_TRANSCRIPTION = 6
+    COLOR_AUTOTUNE = 7
 
     def __init__(
         self,
@@ -196,6 +198,9 @@ class MonitorUI:
         self.recorder = recorder
         self.stopped = False
         self._has_colors = False
+        self._autotune_requested = False
+        self._autotune_status: str | None = None
+        self._autotune_status_time: float = 0.0
 
         self._lock = threading.Lock()
         self._state: dict = {
@@ -231,6 +236,14 @@ class MonitorUI:
                     -self.MAX_TRANSCRIPTION_LINES :
                 ]
 
+    def set_autotune_status(self, status: str) -> None:
+        """Set the auto-tune status message (thread-safe).
+
+        The status line auto-clears after AUTOTUNE_STATUS_DURATION seconds.
+        """
+        self._autotune_status = status
+        self._autotune_status_time = time.time()
+
     def _init_colors(self) -> None:
         """Initialize curses color pairs if the terminal supports colors.
 
@@ -245,6 +258,7 @@ class MonitorUI:
             curses.init_pair(self.COLOR_VOLUME, curses.COLOR_YELLOW, -1)
             curses.init_pair(self.COLOR_FOOTER, curses.COLOR_CYAN, -1)
             curses.init_pair(self.COLOR_TRANSCRIPTION, curses.COLOR_WHITE, -1)
+            curses.init_pair(self.COLOR_AUTOTUNE, curses.COLOR_MAGENTA, -1)
             self._has_colors = True
         except curses.error:
             self._has_colors = False
@@ -300,6 +314,8 @@ class MonitorUI:
                 self.ppm += self.PPM_STEP
                 if self.sdr_device is not None:
                     self.sdr_device.set_ppm(self.ppm)
+        elif key == ord("a") or key == ord("A"):
+            self._autotune_requested = True
         elif key == ord("q") or key == ord("Q"):
             self.stopped = True
             if self.recorder is not None:
@@ -367,6 +383,7 @@ class MonitorUI:
             attr_volume = curses.color_pair(self.COLOR_VOLUME)
             attr_footer = curses.color_pair(self.COLOR_FOOTER)
             attr_transcription = curses.color_pair(self.COLOR_TRANSCRIPTION)
+            attr_autotune = curses.color_pair(self.COLOR_AUTOTUNE) | curses.A_BOLD
         else:
             attr_title = 0
             attr_squelch_open = 0
@@ -374,6 +391,7 @@ class MonitorUI:
             attr_volume = 0
             attr_footer = 0
             attr_transcription = 0
+            attr_autotune = 0
 
         stdscr.erase()
 
@@ -440,6 +458,16 @@ class MonitorUI:
             stdscr.addstr(row, 0, model_line[: width - 1], attr_title)
             row += 1
 
+        # Auto-tune status (shown briefly after auto-tune completes)
+        if self._autotune_status is not None:
+            elapsed_since = time.time() - self._autotune_status_time
+            if elapsed_since < self.AUTOTUNE_STATUS_DURATION:
+                autotune_line = f"  {self._autotune_status}"
+                stdscr.addstr(row, 0, autotune_line[: width - 1], attr_autotune)
+                row += 1
+            else:
+                self._autotune_status = None
+
         # Volume
         vol_pct = int(self._audio_monitor.volume * 100)
         vol_bar = self._format_volume_bar(width=min(20, width - 30))
@@ -470,7 +498,7 @@ class MonitorUI:
 
         # Footer (updated with all key hints)
         footer_row = height - 1
-        footer = "  q quit | +/- vol | s/S squelch | g/G gain | p/P ppm"
+        footer = "  q quit | +/- vol | s/S squelch | g/G gain | p/P ppm | a auto-tune"
         try:
             stdscr.addstr(footer_row, 0, footer[: width - 1], attr_footer)
         except curses.error:

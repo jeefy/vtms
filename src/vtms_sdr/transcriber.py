@@ -78,8 +78,8 @@ def _preprocess_for_whisper(audio: np.ndarray, sample_rate: int) -> np.ndarray:
     """Preprocess raw audio for Whisper transcription.
 
     Pipeline:
-        1. Bandpass filter 300-3400 Hz (radio voice band)
-        2. Noise reduction (if noisereduce is installed)
+        1. Bandpass filter 400-3400 Hz (radio voice band, rejects wind noise)
+        2. Adaptive noise reduction (if noisereduce is installed)
         3. Peak normalize to [-1.0, 1.0]
         4. Resample to 16 kHz
 
@@ -98,15 +98,28 @@ def _preprocess_for_whisper(audio: np.ndarray, sample_rate: int) -> np.ndarray:
     if len(audio) == 0:
         return np.array([], dtype=np.float32)
 
-    # 1. Bandpass filter 300-3400 Hz (radio voice band)
-    sos = butter(4, [300, 3400], btype="band", fs=sample_rate, output="sos")
+    # 1. Bandpass filter 400-3400 Hz (radio voice band)
+    # Lower cutoff raised from 300→400 Hz to reject wind noise energy
+    # that bleeds into the 300-400 Hz range while preserving radio speech
+    # fundamentals (compressed radio audio sits above ~400 Hz).
+    sos = butter(4, [400, 3400], btype="band", fs=sample_rate, output="sos")
     audio = sosfilt(sos, audio).astype(np.float32)
 
     # 2. Noise reduction (uses module-level import check)
-    if _NOISEREDUCE_AVAILABLE:
+    # Uses non-stationary mode to handle bursty noise (wind, interference)
+    # rather than only constant hiss/hum.
+    # Skip noise reduction on silence — noisereduce's non-stationary mode
+    # produces NaN on all-zeros input (division by zero in spectral gate).
+    if _NOISEREDUCE_AVAILABLE and np.max(np.abs(audio)) > 0:
         try:
             audio = nr.reduce_noise(
-                y=audio, sr=sample_rate, prop_decrease=0.7, stationary=True
+                y=audio,
+                sr=sample_rate,
+                prop_decrease=0.85,
+                stationary=False,
+                time_constant_s=0.5,
+                freq_mask_smooth_hz=500,
+                n_std_thresh_stationary=1.5,
             ).astype(np.float32)
         except Exception:
             logger.warning(
@@ -155,16 +168,23 @@ def _run_whisper(
         vad_filter=True,
         vad_parameters=dict(
             min_silence_duration_ms=300,
-            speech_pad_ms=100,
+            speech_pad_ms=200,
         ),
         temperature=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
         initial_prompt=initial_prompt,
+        condition_on_previous_text=False,
+        no_speech_threshold=0.45,
+        log_prob_threshold=-0.8,
+        compression_ratio_threshold=2.0,
     )
 
     texts = []
     for segment in segments:
         text = segment.text.strip()
-        if text:
+        # Filter out low-confidence segments that are likely hallucinations
+        # from noisy audio. avg_logprob <= -1.0 indicates Whisper was
+        # essentially guessing.
+        if text and getattr(segment, "avg_logprob", 0.0) > -1.0:
             texts.append(text)
     return texts
 

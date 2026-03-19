@@ -18,8 +18,9 @@ from vtms_sdr.demod import AUDIO_SAMPLE_RATE
 class FakeSegment:
     """Mimics a faster-whisper Segment namedtuple."""
 
-    def __init__(self, text: str):
+    def __init__(self, text: str, avg_logprob: float = -0.3):
         self.text = text
+        self.avg_logprob = avg_logprob
 
 
 class FakeWhisperModel:
@@ -847,10 +848,71 @@ class TestRunWhisper:
         assert call_kwargs["beam_size"] == 5
         assert call_kwargs["vad_filter"] is True
         assert call_kwargs["vad_parameters"]["min_silence_duration_ms"] == 300
-        assert call_kwargs["vad_parameters"]["speech_pad_ms"] == 100
+        assert call_kwargs["vad_parameters"]["speech_pad_ms"] == 200
         assert call_kwargs["language"] == "en"
         assert call_kwargs["temperature"] == (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
         assert call_kwargs["initial_prompt"] is None
+        assert call_kwargs["condition_on_previous_text"] is False
+        assert call_kwargs["no_speech_threshold"] == 0.45
+        assert call_kwargs["log_prob_threshold"] == -0.8
+        assert call_kwargs["compression_ratio_threshold"] == 2.0
+
+
+class TestRunWhisperConfidenceFilter:
+    """Tests for _run_whisper segment filtering by avg_logprob."""
+
+    def test_high_confidence_segments_kept(self):
+        """Segments with avg_logprob > -1.0 should be included."""
+        from vtms_sdr.transcriber import _run_whisper
+
+        model = FakeWhisperModel("tiny")
+        model._segments = [
+            FakeSegment("copy that", avg_logprob=-0.3),
+            FakeSegment("box box", avg_logprob=-0.5),
+        ]
+
+        texts = _run_whisper(model, _make_audio(1.0), language="en")
+        assert texts == ["copy that", "box box"]
+
+    def test_low_confidence_segments_filtered(self):
+        """Segments with avg_logprob <= -1.0 should be excluded."""
+        from vtms_sdr.transcriber import _run_whisper
+
+        model = FakeWhisperModel("tiny")
+        model._segments = [
+            FakeSegment("copy that", avg_logprob=-0.3),
+            FakeSegment("the the the the", avg_logprob=-1.5),
+            FakeSegment("box box", avg_logprob=-1.0),  # exactly -1.0 is excluded
+        ]
+
+        texts = _run_whisper(model, _make_audio(1.0), language="en")
+        assert texts == ["copy that"]
+
+    def test_all_low_confidence_returns_empty(self):
+        """When all segments are low confidence, return empty list."""
+        from vtms_sdr.transcriber import _run_whisper
+
+        model = FakeWhisperModel("tiny")
+        model._segments = [
+            FakeSegment("hallucination", avg_logprob=-2.0),
+            FakeSegment("noise noise", avg_logprob=-1.1),
+        ]
+
+        texts = _run_whisper(model, _make_audio(1.0), language="en")
+        assert texts == []
+
+    def test_missing_avg_logprob_defaults_to_included(self):
+        """Segments without avg_logprob attribute should be included (getattr default)."""
+        from vtms_sdr.transcriber import _run_whisper
+
+        model = FakeWhisperModel("tiny")
+        # Create segment without avg_logprob
+        seg = FakeSegment("legacy segment")
+        del seg.avg_logprob
+        model._segments = [seg]
+
+        texts = _run_whisper(model, _make_audio(1.0), language="en")
+        assert texts == ["legacy segment"]
 
 
 class TestModelCache:
