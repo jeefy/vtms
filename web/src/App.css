@@ -1,0 +1,336 @@
+/* ── Reset & Base ──────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --accent: #3b82f6;
+  --green: #4ade80;
+  --yellow: #facc15;
+  --red: #ef4444;
+  --blue: #60a5fa;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ── Layout ───────────────────────────────────────────────── */
+.layout { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+.layout-header { flex-shrink: 0; }
+.layout-main { flex: 1; display: flex; min-height: 0; }
+.layout-left { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.layout-gopro { flex: 1; min-height: 0; position: relative; border-bottom: 1px solid var(--border); }
+.layout-map { flex: 1; min-height: 0; position: relative; }
+.layout-gauges { flex: 1; min-width: 0; min-height: 0; overflow: hidden; border-left: 1px solid var(--border); }
+
+/* ── Status Bar ───────────────────────────────────────────── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  gap: 16px;
+}
+
+.status-bar-left,
+.status-bar-right {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.status-bar-center {
+  flex: 1;
+  text-align: center;
+}
+
+.app-title {
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dtc-alert {
+  color: var(--red);
+  font-weight: 600;
+}
+
+/* ── Map ──────────────────────────────────────────────────── */
+.map-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.map {
+  width: 100%;
+  height: 100%;
+}
+
+.map-overlay {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 1000;
+  display: flex;
+  gap: 12px;
+  padding: 6px 12px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text-dim);
+}
+
+/* ── Gauge Panel ──────────────────────────────────────────── */
+.gauge-panel {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 1fr 1fr;
+  gap: 0;
+  padding: 4px;
+  height: 100%;
+}
+
+.gauge-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.radial-gauge {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── GoPro View ───────────────────────────────────────────── */
+.gopro-view {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: #000;
+  overflow: hidden;
+}
+
+.gopro-canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.gopro-disconnected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gopro-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-dim);
+}
+
+.gopro-placeholder-icon {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.gopro-placeholder-text {
+  font-size: 14px;
+}
+
+/* ── GoPro Controls Overlay ───────────────────────────────── */
+.gopro-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.75);
+  transition: opacity 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gopro-controls-visible {
+  opacity: 1;
+}
+
+.gopro-controls-hidden {
+  opacity: 0.15;
+}
+
+.gopro-controls:hover {
+  opacity: 1;
+}
+
+.gopro-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gopro-record-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.gopro-record-btn.recording {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.gopro-record-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+
+.gopro-record-btn.recording .gopro-record-dot {
+  background: var(--red);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.gopro-presets {
+  display: flex;
+  gap: 4px;
+}
+
+.gopro-preset-btn {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.gopro-preset-btn.active {
+  background: var(--accent);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.gopro-status-row {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: monospace;
+}
+
+.gopro-status-item {
+  white-space: nowrap;
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .layout-main {
+    flex-direction: column;
+  }
+
+  .layout-left {
+    flex: none;
+    min-height: 300px;
+  }
+
+  .layout-gopro {
+    flex: 1;
+    min-height: 150px;
+  }
+
+  .layout-map {
+    flex: 1;
+    min-height: 200px;
+  }
+
+  .layout-gauges {
+    flex: none;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    max-height: 50vh;
+  }
+
+  .gauge-panel {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .status-bar-center {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .gauge-panel {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .status-bar {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+}
