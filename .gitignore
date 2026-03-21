@@ -1,6 +1,7 @@
 data/
 bin/
 pyvenv.cfg
+node_modules/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
