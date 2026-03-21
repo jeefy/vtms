@@ -1,8 +1,31 @@
+# Python
 __pycache__
-data
-include
-lib
 .venv
 pyvenv.cfg
+
+# Build artifacts & deps (rebuilt in container)
+web/node_modules
+web/dist
+server/node_modules
+server/dist
+data
+
+# Dev/CI files
+.git
+.github
+.opencode
+.pytest_cache
+.env
+*.md
+LICENSE
 Makefile
 install.sh
+old
+arduino
+tests
+docs
+include
+lib
+e2e
+web/e2e
+web/test-results

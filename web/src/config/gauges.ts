@@ -1,14 +1,8 @@
-import type { GaugeConfig } from "../types/telemetry";
+import type { AppConfig, GaugeConfigEntry, MqttConfig, GoProConfig } from "../types/config";
 
-/**
- * Gauge configuration list.
- *
- * To add a new gauge, add an entry here. No component changes needed.
- * The `topic` must match the MQTT topic published by client.py
- * (e.g. "lemons/RPM" publishes values like "3500 revolutions_per_minute").
- */
-export const gaugeConfig: GaugeConfig[] = [
+export const defaultGaugeConfig: GaugeConfigEntry[] = [
   {
+    id: "rpm",
     topic: "lemons/RPM",
     label: "RPM",
     min: 0,
@@ -21,6 +15,7 @@ export const gaugeConfig: GaugeConfig[] = [
     ],
   },
   {
+    id: "speed",
     topic: "lemons/SPEED",
     label: "Speed",
     min: 0,
@@ -29,6 +24,7 @@ export const gaugeConfig: GaugeConfig[] = [
     zones: [{ from: 0, to: 200, color: "#4ade80" }],
   },
   {
+    id: "coolant",
     topic: "lemons/COOLANT_TEMP",
     label: "Coolant",
     min: 0,
@@ -42,6 +38,7 @@ export const gaugeConfig: GaugeConfig[] = [
     ],
   },
   {
+    id: "oil_temp",
     topic: "lemons/OIL_TEMP",
     label: "Oil Temp",
     min: 0,
@@ -55,6 +52,7 @@ export const gaugeConfig: GaugeConfig[] = [
     ],
   },
   {
+    id: "throttle",
     topic: "lemons/THROTTLE_POS",
     label: "Throttle",
     min: 0,
@@ -63,6 +61,7 @@ export const gaugeConfig: GaugeConfig[] = [
     zones: [{ from: 0, to: 100, color: "#4ade80" }],
   },
   {
+    id: "load",
     topic: "lemons/ENGINE_LOAD",
     label: "Load",
     min: 0,
@@ -76,15 +75,18 @@ export const gaugeConfig: GaugeConfig[] = [
   },
 ];
 
-/**
- * MQTT broker configuration.
- * The broker must have WebSocket support enabled.
- */
-export const mqttConfig = {
-  /** WebSocket URL for the MQTT broker */
+export const defaultMqttConfig: MqttConfig = {
   url: import.meta.env.VITE_MQTT_URL ?? "ws://192.168.50.24:9001",
-  /** MQTT topic prefix */
   topicPrefix: "lemons/",
-  /** Reconnect interval in ms */
-  reconnectInterval: 5000,
+};
+
+export const defaultGoProConfig: GoProConfig = {
+  apiUrl: import.meta.env.VITE_GOPRO_API_URL ?? "http://localhost:3001",
+  streamWsUrl: import.meta.env.VITE_GOPRO_STREAM_URL ?? "ws://localhost:9002",
+};
+
+export const defaultAppConfig: AppConfig = {
+  mqtt: defaultMqttConfig,
+  gopro: defaultGoProConfig,
+  gauges: defaultGaugeConfig,
 };

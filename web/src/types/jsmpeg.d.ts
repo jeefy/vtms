@@ -15,5 +15,10 @@ declare module "@cycjimmy/jsmpeg-player" {
     );
     destroy(): void;
   }
-  export default { VideoElement };
+
+  const JSMpeg: {
+    VideoElement: typeof VideoElement;
+  };
+
+  export default JSMpeg;
 }

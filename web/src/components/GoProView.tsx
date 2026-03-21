@@ -23,12 +23,13 @@ export function GoProView({
   const playerRef = useRef<InstanceType<typeof JSMpeg.VideoElement> | null>(null);
 
   useEffect(() => {
-    if (!canvasRef.current || connectionStatus !== "connected") return;
+    const canvas = canvasRef.current;
+    if (!canvas || !canvas.parentElement || connectionStatus !== "connected") return;
 
     playerRef.current = new JSMpeg.VideoElement(
-      canvasRef.current.parentElement!,
+      canvas.parentElement,
       streamWsUrl,
-      { canvas: canvasRef.current },
+      { canvas },
       { audio: false, videoBufferSize: 512 * 1024 }
     );
 
@@ -39,15 +40,17 @@ export function GoProView({
   }, [streamWsUrl, connectionStatus]);
 
   if (connectionStatus !== "connected") {
+    const message =
+      connectionStatus === "connecting"
+        ? "Connecting to GoPro..."
+        : connectionStatus === "error"
+          ? "GoPro Communication Error"
+          : "No Camera Connected";
     return (
       <div className="gopro-view gopro-disconnected">
         <div className="gopro-placeholder">
           <span className="gopro-placeholder-icon">CAM</span>
-          <span className="gopro-placeholder-text">
-            {connectionStatus === "connecting"
-              ? "Connecting to GoPro..."
-              : "No Camera Connected"}
-          </span>
+          <span className="gopro-placeholder-text">{message}</span>
         </div>
       </div>
     );

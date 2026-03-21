@@ -59,9 +59,13 @@ export class StreamManager {
 
   private async requestGoProStream(): Promise<void> {
     try {
-      await fetch(`${GOPRO_BASE_URL}/gopro/camera/stream/start`, {
+      const response = await fetch(`${GOPRO_BASE_URL}/gopro/camera/stream/start`, {
         signal: AbortSignal.timeout(5000),
       });
+      if (!response.ok) {
+        console.warn(`GoPro stream/start returned ${response.status}`);
+        return;
+      }
       console.log("GoPro stream/start sent");
     } catch (err) {
       console.warn("Failed to send stream/start to GoPro:", String(err));

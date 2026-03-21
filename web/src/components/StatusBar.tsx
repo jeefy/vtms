@@ -4,6 +4,7 @@ interface StatusBarProps {
   connectionStatus: MqttConnectionStatus;
   hasGpsFix: boolean;
   dtcs: DtcEntry[];
+  onOpenSettings: () => void;
 }
 
 const statusIndicator: Record<MqttConnectionStatus, { color: string; label: string }> = {
@@ -13,7 +14,7 @@ const statusIndicator: Record<MqttConnectionStatus, { color: string; label: stri
   error: { color: "#ef4444", label: "MQTT Error" },
 };
 
-export function StatusBar({ connectionStatus, hasGpsFix, dtcs }: StatusBarProps) {
+export function StatusBar({ connectionStatus, hasGpsFix, dtcs, onOpenSettings }: StatusBarProps) {
   const mqttStatus = statusIndicator[connectionStatus];
 
   return (
@@ -44,6 +45,9 @@ export function StatusBar({ connectionStatus, hasGpsFix, dtcs }: StatusBarProps)
             {dtcs.map((d) => d.code).join(", ")}
           </span>
         )}
+        <button className="settings-gear-btn" onClick={onOpenSettings} aria-label="Open settings" title="Settings">
+          &#9881;
+        </button>
       </div>
     </div>
   );

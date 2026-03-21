@@ -41,24 +41,6 @@ export interface GaugeZone {
   color: string;
 }
 
-/** Configuration for a single gauge */
-export interface GaugeConfig {
-  /** MQTT topic to subscribe to (e.g. "lemons/RPM") */
-  topic: string;
-  /** Display label */
-  label: string;
-  /** Minimum gauge value */
-  min: number;
-  /** Maximum gauge value */
-  max: number;
-  /** Unit label (e.g. "rpm", "°C") */
-  unit: string;
-  /** Optional color zones */
-  zones?: GaugeZone[];
-  /** Number of decimal places to display (default 0) */
-  decimals?: number;
-}
-
 /** Complete telemetry store state */
 export interface TelemetryState {
   /** All metric values keyed by topic suffix (e.g. "RPM", "SPEED") */

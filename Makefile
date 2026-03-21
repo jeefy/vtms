@@ -1,20 +1,91 @@
-TOPDIR=$(PWD)
-WHOAMI=$(shell whoami)
+PYTHON   ?= python3
+PIP      ?= pip3
+WHOAMI   := $(shell whoami)
+IMAGE    := $(WHOAMI)/vtms
+
+# ── Python ──────────────────────────────────────────────
+.PHONY: venv requirements requirements-dev pip-compile lint test client server-py
+
+venv:
+	$(PYTHON) -m venv .venv
+	@echo "Activate with: source .venv/bin/activate"
 
 requirements:
-	bin/pip3 install -r requirements.txt
+	$(PIP) install -r requirements.txt
 
-server:
-	bin/python3 -m flask --app server run
+requirements-dev: requirements
+	$(PIP) install -r requirements-dev.txt
+
+pip-compile:
+	$(PIP) install pip-tools
+	pip-compile requirements.in -o requirements.txt
+	pip-compile requirements-dev.in -o requirements-dev.txt
+
+lint:
+	$(PYTHON) -m flake8 client.py server.py src/ tests/
+	$(PYTHON) -m black --check client.py server.py src/ tests/
+	$(PYTHON) -m isort --check client.py server.py src/ tests/
+
+format:
+	$(PYTHON) -m black client.py server.py src/ tests/
+	$(PYTHON) -m isort client.py server.py src/ tests/
+
+test:
+	$(PYTHON) -m pytest tests/ -v
+
+test-cov:
+	$(PYTHON) -m pytest tests/ -v --cov=src --cov-report=term-missing
 
 client:
-	bin/python3 client.py
+	$(PYTHON) client.py
+
+server-py:
+	$(PYTHON) -m flask --app server run
+
+# ── Node (server + web) ────────────────────────────────
+.PHONY: server-install server-build server-dev web-install web-build web-dev
+
+server-install:
+	cd server && npm ci
+
+server-build: server-install
+	cd server && npm run build
+
+server-dev:
+	cd server && npm run dev
+
+web-install:
+	cd web && npm ci
+
+web-build: web-install
+	cd web && npm run build
+
+web-dev:
+	cd web && npm run dev
+
+# ── Docker ──────────────────────────────────────────────
+.PHONY: image image-run image-push image-web image-web-run
 
 image:
-	docker build -t $(WHOAMI)/vtms:latest .
+	docker build -t $(IMAGE):latest .
 
-make image-run: image
-	docker run -v ./data/:/app/data --privileged --rm --name vtms $(WHOAMI)/vtms:latest
+image-run: image
+	docker run -v ./data/:/app/data --privileged --rm --name vtms $(IMAGE):latest
 
-make image-push: image
-	docker push $(WHOAMI)/vtms:latest
+image-push: image
+	docker push $(IMAGE):latest
+
+image-web:
+	docker build -f Dockerfile.web -t $(IMAGE)-web:latest .
+
+image-web-run: image-web
+	docker run --rm -p 3001:3001 --name vtms-web $(IMAGE)-web:latest
+
+# ── CI helpers ──────────────────────────────────────────
+.PHONY: ci-python ci-node ci
+
+ci-python: lint test
+
+ci-node: server-build web-build
+
+ci: ci-python ci-node

@@ -6,7 +6,8 @@ import psycopg2
 import psycopg2.extras
 from src import config
 
-print('Not Fast Not Furious!')
+print("Not Fast Not Furious!")
+
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, reason_code, properties):
@@ -15,20 +16,24 @@ def on_connect(client, userdata, flags, reason_code, properties):
     # reconnect then subscriptions will be renewed.
     client.subscribe("lemons/#")
 
+
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
     try:
-        payload_str = str(msg.payload.decode('utf-8'))
+        payload_str = str(msg.payload.decode("utf-8"))
         print(f"{msg.topic} {payload_str}")
-        
+
         # Use parameterized query for PostgreSQL
-        cur.execute("INSERT INTO telemetry (metric, value) VALUES (%s, %s)", 
-                   (msg.topic, payload_str))
+        cur.execute(
+            "INSERT INTO telemetry (metric, value) VALUES (%s, %s)",
+            (msg.topic, payload_str),
+        )
         con.commit()  # Commit each transaction
-        
+
     except Exception as e:
         print(f"Error inserting data: {e}")
         con.rollback()
+
 
 def graceful_shutdown():
     print()
@@ -41,6 +46,7 @@ def graceful_shutdown():
     print("Graceful shutdown complete.")
     sys.exit(0)
 
+
 # catch ctrl-c
 def signal_handler(signum, frame):
     graceful_shutdown()
@@ -52,13 +58,13 @@ try:
     con = psycopg2.connect(
         host=config.config.postgres_host,
         database=config.config.postgres_database,
-        user=config.config.postgres_user, 
+        user=config.config.postgres_user,
         password=config.config.postgres_password,
-        port=config.config.postgres_port
+        port=config.config.postgres_port,
     )
     con.set_session(autocommit=False)  # Use explicit transactions
     cur = con.cursor()
-    
+
     # Create table with PostgreSQL syntax and appropriate data types
     cur.execute("""
         CREATE TABLE IF NOT EXISTS telemetry (
@@ -69,16 +75,16 @@ try:
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
+
     # Create index for better query performance
     cur.execute("""
         CREATE INDEX IF NOT EXISTS idx_telemetry_metric_timestamp 
         ON telemetry(metric, timestamp)
     """)
-    
+
     con.commit()
     print("PostgreSQL database connection established")
-    
+
 except psycopg2.Error as e:
     print(f"PostgreSQL connection error: {e}")
     sys.exit(1)
@@ -86,7 +92,9 @@ except psycopg2.Error as e:
 mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 mqttc.on_connect = on_connect
 mqttc.on_message = on_message
-mqttc.connect(config.mqtt_server, config.config.mqtt_port, config.config.mqtt_keepalive)
+mqttc.connect(
+    config.config.mqtt_server, config.config.mqtt_port, config.config.mqtt_keepalive
+)
 
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)

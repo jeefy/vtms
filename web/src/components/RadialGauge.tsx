@@ -1,8 +1,9 @@
 import { useMemo } from "react";
-import type { GaugeConfig, GaugeZone } from "../types/telemetry";
+import type { GaugeZone } from "../types/telemetry";
+import type { GaugeConfigEntry } from "../types/config";
 
 interface RadialGaugeProps {
-  config: GaugeConfig;
+  config: GaugeConfigEntry;
   value: number;
 }
 

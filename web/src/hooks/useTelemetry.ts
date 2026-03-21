@@ -4,6 +4,7 @@ import type {
   GpsData,
   DtcEntry,
 } from "../types/telemetry";
+import type { MqttConfig } from "../types/config";
 import { useMqtt } from "./useMqtt";
 
 const TRAIL_MAX_LENGTH = 500;
@@ -38,7 +39,7 @@ const emptyGps: GpsData = {
  * This hook is the single source of truth. In the future, a `usePlayback`
  * hook can feed the same state shape from historical data.
  */
-export function useTelemetry() {
+export function useTelemetry(mqttConfig: MqttConfig) {
   const [metrics, setMetrics] = useState<Map<string, TelemetryValue>>(
     () => new Map()
   );
@@ -48,13 +49,16 @@ export function useTelemetry() {
 
   // Use a ref for the trail so we can append without causing re-renders on every GPS update
   const trailRef = useRef<[number, number][]>([]);
+  const prefixRef = useRef(mqttConfig.topicPrefix);
+  prefixRef.current = mqttConfig.topicPrefix;
 
   const handleMessage = useCallback((topic: string, payload: string) => {
     const now = Date.now();
+    const prefix = prefixRef.current;
 
     // GPS topics
-    if (topic.startsWith("lemons/gps/")) {
-      const field = topic.replace("lemons/gps/", "");
+    if (topic.startsWith(`${prefix}gps/`)) {
+      const field = topic.replace(`${prefix}gps/`, "");
       setGps((prev) => {
         const next = { ...prev, timestamp: now };
         switch (field) {
@@ -98,8 +102,8 @@ export function useTelemetry() {
     }
 
     // DTC topics
-    if (topic.startsWith("lemons/DTC/")) {
-      const code = topic.replace("lemons/DTC/", "");
+    if (topic.startsWith(`${prefix}DTC/`)) {
+      const code = topic.replace(`${prefix}DTC/`, "");
       setDtcs((prev) => {
         // Replace existing DTC with same code, or add new
         const filtered = prev.filter((d) => d.code !== code);
@@ -109,8 +113,8 @@ export function useTelemetry() {
     }
 
     // All other lemons/* topics are metrics
-    if (topic.startsWith("lemons/")) {
-      const key = topic.replace("lemons/", "");
+    if (topic.startsWith(prefix)) {
+      const key = topic.replace(prefix, "");
       const value: TelemetryValue = {
         raw: payload,
         value: parseOBDValue(payload),
@@ -124,7 +128,7 @@ export function useTelemetry() {
     }
   }, []);
 
-  const { status: connectionStatus } = useMqtt(handleMessage);
+  const { status: connectionStatus } = useMqtt(mqttConfig.url, mqttConfig.topicPrefix, handleMessage);
 
   return {
     metrics,

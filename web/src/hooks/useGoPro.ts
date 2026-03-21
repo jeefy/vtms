@@ -2,10 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { GoProState, GoProPreset } from "../types/gopro";
 import { PRESET_GROUP_IDS } from "../types/gopro";
 
-const API_BASE = import.meta.env.VITE_GOPRO_API_URL ?? "http://localhost:3001";
 const POLL_INTERVAL = 5000;
 
-export function useGoPro() {
+export function useGoPro(apiUrl: string) {
   const [state, setState] = useState<GoProState>({
     connectionStatus: "disconnected",
     isRecording: false,
@@ -15,19 +14,47 @@ export function useGoPro() {
   });
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  // Auto-start/stop stream when connection changes
+  const wasConnected = useRef(false);
 
   useEffect(() => {
     const poll = async () => {
       try {
-        const connRes = await fetch(`${API_BASE}/api/gopro/connection`);
+        const connRes = await fetch(`${apiUrl}/api/gopro/connection`);
+        if (!connRes.ok) {
+          setState((prev) => ({ ...prev, connectionStatus: "disconnected" }));
+          return;
+        }
         const connData = await connRes.json();
 
         if (!connData.connected) {
+          if (wasConnected.current) {
+            // Camera disconnected - stop stream
+            wasConnected.current = false;
+            try {
+              await fetch(`${apiUrl}/api/stream/stop`, { method: "POST" });
+            } catch {
+              // ignore
+            }
+          }
           setState((prev) => ({ ...prev, connectionStatus: "disconnected" }));
           return;
         }
 
-        const stateRes = await fetch(`${API_BASE}/api/gopro/state`);
+        // Camera is connected - start stream if not already
+        if (!wasConnected.current) {
+          wasConnected.current = true;
+          try {
+            await fetch(`${apiUrl}/api/stream/start`, { method: "POST" });
+          } catch {
+            // ignore
+          }
+        }
+
+        const stateRes = await fetch(`${apiUrl}/api/gopro/state`);
         if (!stateRes.ok) {
           setState((prev) => ({ ...prev, connectionStatus: "error" }));
           return;
@@ -55,44 +82,35 @@ export function useGoPro() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, []);
+  }, [apiUrl]);
 
+  // Use ref to avoid stale closure in toggleRecord
   const toggleRecord = useCallback(async () => {
-    const action = state.isRecording ? "stop" : "start";
+    const action = stateRef.current.isRecording ? "stop" : "start";
     try {
-      await fetch(`${API_BASE}/api/gopro/shutter/${action}`);
-      setState((prev) => ({ ...prev, isRecording: !prev.isRecording }));
+      const res = await fetch(`${apiUrl}/api/gopro/shutter/${action}`);
+      if (res.ok) {
+        setState((prev) => ({ ...prev, isRecording: !prev.isRecording }));
+      }
     } catch {
       // Will be corrected on next poll
     }
-  }, [state.isRecording]);
+  }, [apiUrl]);
 
   const setPreset = useCallback(async (preset: GoProPreset) => {
     try {
-      await fetch(`${API_BASE}/api/gopro/presets/set_group?id=${PRESET_GROUP_IDS[preset]}`);
-      setState((prev) => ({ ...prev, activePreset: preset }));
+      const res = await fetch(
+        `${apiUrl}/api/gopro/presets/set_group?id=${PRESET_GROUP_IDS[preset]}`
+      );
+      if (res.ok) {
+        setState((prev) => ({ ...prev, activePreset: preset }));
+      }
     } catch {
       // Will be corrected on next poll
     }
-  }, []);
+  }, [apiUrl]);
 
-  const startStream = useCallback(async () => {
-    try {
-      await fetch(`${API_BASE}/api/stream/start`, { method: "POST" });
-    } catch {
-      console.warn("Failed to start stream");
-    }
-  }, []);
-
-  const stopStream = useCallback(async () => {
-    try {
-      await fetch(`${API_BASE}/api/stream/stop`, { method: "POST" });
-    } catch {
-      console.warn("Failed to stop stream");
-    }
-  }, []);
-
-  return { ...state, toggleRecord, setPreset, startStream, stopStream };
+  return { ...state, toggleRecord, setPreset };
 }
 
 function detectPreset(status: Record<string, number>): GoProPreset {

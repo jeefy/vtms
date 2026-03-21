@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { GoProPreset } from "../types/gopro";
 
 interface GoProControlsProps {
@@ -19,22 +19,20 @@ export function GoProControls({
   onSetPreset,
 }: GoProControlsProps) {
   const [visible, setVisible] = useState(true);
-  const [hideTimer, setHideTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetHideTimer = useCallback(() => {
     setVisible(true);
-    if (hideTimer) clearTimeout(hideTimer);
-    const timer = setTimeout(() => setVisible(false), 4000);
-    setHideTimer(timer);
-  }, [hideTimer]);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => setVisible(false), 4000);
+  }, []);
 
   useEffect(() => {
     resetHideTimer();
     return () => {
-      if (hideTimer) clearTimeout(hideTimer);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [resetHideTimer]);
 
   return (
     <div
