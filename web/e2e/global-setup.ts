@@ -8,10 +8,10 @@
  * Both ports are written to process.env so tests and config can use them.
  */
 import { Aedes } from "aedes";
-import { createServer, type Server as NetServer } from "net";
-import { createServer as createHttpServer, type Server as HttpServer } from "http";
+import { createServer } from "net";
+import { createServer as createHttpServer } from "http";
 import ws from "websocket-stream";
-import { exec, type ChildProcess } from "child_process";
+import { exec } from "child_process";
 import { writeFileSync } from "fs";
 import { join } from "path";
 

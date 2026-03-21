@@ -5,7 +5,7 @@ Integration tests for VTMS system
 import asyncio
 import sys
 import os
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import time
 
 # Add the parent directory to the path so we can import the modules
@@ -157,7 +157,6 @@ class TestVTMSIntegration:
                     with patch("src.config.config") as mock_config:
                         mock_config.obd_retry_delay = 0.001
                         # Run setup for a very short time
-                        import threading
                         import time
 
                         def timeout_setup():

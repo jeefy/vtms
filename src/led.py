@@ -1,5 +1,4 @@
 import RPi.GPIO as GPIO  # Import Raspberry Pi GPIO library
-from time import sleep  # Import the sleep function from the time module
 
 mapping = {"box": 8, "pit": 10, "red": 12, "black": 16}
 

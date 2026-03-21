@@ -2,9 +2,8 @@
 Test configuration and fixtures for VTMS tests
 """
 
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 from obd import OBDStatus
-import paho.mqtt.client as mqtt
 
 
 class MockOBDResponse:

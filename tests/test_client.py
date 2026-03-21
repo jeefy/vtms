@@ -3,20 +3,16 @@ Unit tests for VTMS Client
 """
 
 import asyncio
-import pytest
 import sys
 import os
-import json
 import time
-from unittest.mock import Mock, MagicMock, patch, call
-from obd import OBDStatus
-from collections import deque
+from unittest.mock import Mock, patch
 
 # Add the parent directory to the path so we can import the modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from client import VTMSClient, MQTTWrapper
-from src.config import Config, config as vtms_config
+from src.config import Config
 from tests.conftest import MockOBDAsync, MockMQTTClient, MockGPSPacket
 
 

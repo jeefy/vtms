@@ -1,5 +1,4 @@
 
-import os
 import pytest
 from wiring.parser import Wire, Pin, parse_wiring_file
 from wiring.diagram import generate_svg, generate_pinouts

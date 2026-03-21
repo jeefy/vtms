@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import time, sys, signal
+import sys, signal
 import paho.mqtt.client as mqtt
 import psycopg2
 import psycopg2.extras

@@ -6,7 +6,6 @@ Handles OBD2 and GPS data collection and MQTT communication
 
 import asyncio
 import logging
-import sys
 import time
 from functools import partial
 from typing import Optional

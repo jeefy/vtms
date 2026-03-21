@@ -3,7 +3,7 @@ MQTT message handlers for VTMS system
 """
 
 import logging
-from typing import Dict, Callable, Any
+from typing import Dict, Callable
 
 from . import config
 
