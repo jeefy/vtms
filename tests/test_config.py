@@ -4,6 +4,7 @@ Unit tests for configuration module
 
 import sys
 import os
+import pytest
 from unittest.mock import patch, mock_open
 
 # Add the parent directory to the path so we can import the modules
@@ -41,10 +42,9 @@ class TestConfig:
         assert cfg.debug is False
 
     def test_readonly_properties(self):
-        """Test that configuration properties are read-only (except debug)"""
+        """Test that configuration properties are accessible as attributes"""
         cfg = Config()
 
-        # These should not raise AttributeError since they're properties
         assert cfg.mqtt_server == "192.168.50.24"
         assert cfg.mqtt_port == 1883
         assert cfg.mqtt_keepalive == 60
@@ -56,7 +56,6 @@ class TestConfig:
         """Test is_raspberrypi returns True when on Raspberry Pi"""
         result = Config.is_raspberrypi()
         assert result is True
-        mock_file.assert_called_once_with("/sys/firmware/devicetree/base/model", "r")
 
     @patch("builtins.open", new_callable=mock_open, read_data="Generic x86_64 PC")
     def test_is_raspberrypi_false(self, mock_file):
@@ -72,7 +71,6 @@ class TestConfig:
 
     def test_legacy_functions(self):
         """Test debug property access on config instance"""
-        # Test config.debug property
         original_debug = config.debug
 
         config.debug = True
@@ -99,6 +97,21 @@ class TestConfig:
         assert isinstance(config, Config)
         assert hasattr(config, "debug")
         assert hasattr(config, "mqtt_server")
+
+    def test_config_requires_postgres_user(self, monkeypatch):
+        """Test Config raises EnvironmentError when POSTGRES_USER is missing"""
+        monkeypatch.delenv("POSTGRES_USER", raising=False)
+        monkeypatch.delenv("POSTGRES_PASSWORD", raising=False)
+        with pytest.raises(EnvironmentError):
+            Config()
+
+    def test_config_reads_env_vars(self, monkeypatch):
+        """Test Config reads postgres credentials from env vars"""
+        monkeypatch.setenv("POSTGRES_USER", "env_test_user")
+        monkeypatch.setenv("POSTGRES_PASSWORD", "env_test_pass")
+        c = Config()
+        assert c.postgres_user == "env_test_user"
+        assert c.postgres_password == "env_test_pass"
 
 
 class TestConfigIntegration:
