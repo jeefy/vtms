@@ -1,29 +1,40 @@
 # ── Stage 1: Build the React frontend ──────────────────
 FROM node:22-alpine AS build-web
 
-WORKDIR /build/web
-COPY web/package.json web/package-lock.json ./
-RUN npm ci
-COPY web/ ./
-RUN npm run build
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /build
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY web/package.json web/
+RUN pnpm install --frozen-lockfile --filter web
+
+COPY web/ web/
+RUN pnpm --filter web build
 
 # ── Stage 2: Build the Express server ──────────────────
 FROM node:22-alpine AS build-server
 
-WORKDIR /build/server
-COPY server/package.json server/package-lock.json ./
-RUN npm ci
-COPY server/ ./
-RUN npm run build
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /build
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY server/package.json server/
+RUN pnpm install --frozen-lockfile --filter vtms-server
+
+COPY server/ server/
+RUN pnpm --filter vtms-server build
 
 # ── Stage 3: Production runtime ────────────────────────
 FROM node:22-alpine AS runtime
 
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 WORKDIR /app/server
 
 # Install production dependencies only
-COPY server/package.json server/package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml /app/
+COPY server/package.json ./
+RUN cd /app && pnpm install --frozen-lockfile --filter vtms-server --prod
 
 # Copy compiled server
 COPY --from=build-server /build/server/dist ./dist

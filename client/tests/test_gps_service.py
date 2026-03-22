@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
 
-from src.gps_service import GPSService
+from vtms_client.gps_service import GPSService
 
 
 class TestGPSServiceInit:
@@ -23,13 +23,13 @@ class TestGPSServiceInit:
 class TestGPSServiceDiscoverPorts:
     """Test port discovery."""
 
-    @patch("src.gps_service.GPS_AVAILABLE", False)
+    @patch("vtms_client.gps_service.GPS_AVAILABLE", False)
     def test_discover_returns_empty_when_unavailable(self):
         result = GPSService.discover_ports()
         assert result == []
 
-    @patch("src.gps_service.GPS_AVAILABLE", True)
-    @patch("src.gps_service.serial")
+    @patch("vtms_client.gps_service.GPS_AVAILABLE", True)
+    @patch("vtms_client.gps_service.serial")
     def test_discover_finds_matching_ports(self, mock_serial):
         port1 = MagicMock()
         port1.device = "/dev/ttyACM0"
@@ -131,7 +131,7 @@ class TestGPSServicePublishPosition:
 
         publisher.assert_not_called()
 
-    @patch("src.gps_service.pygeohash")
+    @patch("vtms_client.gps_service.pygeohash")
     def test_publishes_position_topics(self, mock_geohash):
         mock_geohash.encode.return_value = "dr5regw3pp6g"
 

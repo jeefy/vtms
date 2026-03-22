@@ -1,9 +1,0 @@
-# Runtime dependencies for VTMS
-# To regenerate pinned versions: make pip-compile
-obd
-paho-mqtt
-# RPi.GPIO
-pynmea2
-pyserial
-psycopg2-binary
-pygeohash

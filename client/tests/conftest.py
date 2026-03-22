@@ -196,7 +196,7 @@ try:
     @pytest.fixture
     def mock_config():
         """Fixture for mock config"""
-        with patch("src.config.config") as mock_cfg:
+        with patch("vtms_client.config.config") as mock_cfg:
             mock_cfg.mqtt_port = 1883
             mock_cfg.mqtt_keepalive = 60
             mock_cfg.obd_retry_delay = 15

@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 # Add the parent directory to the path so we can import the modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src import myobd
+from vtms_client import myobd
 
 
 class MockOBDResponse:
@@ -57,7 +57,7 @@ class TestMyOBDModule:
 class TestNewMetric:
     """Test cases for new_metric function"""
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     def test_new_metric_with_valid_data(self, mock_config):
         """Test new_metric with valid OBD response"""
         mock_config.debug = True
@@ -76,7 +76,7 @@ class TestNewMetric:
         assert topic == "lemons/RPM"
         assert str(mock_value) in payload
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     def test_new_metric_with_null_response(self, mock_config):
         """Test new_metric with null OBD response"""
         mock_config.debug = True
@@ -89,7 +89,7 @@ class TestNewMetric:
         # Verify no MQTT publish was called for null response
         assert len(mock_mqttc.published_messages) == 0
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     def test_new_metric_debug_disabled(self, mock_config):
         """Test new_metric with debug disabled"""
         mock_config.debug = False
@@ -108,7 +108,7 @@ class TestNewMetric:
 class TestNewMonitor:
     """Test cases for new_monitor function"""
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     def test_new_monitor_with_valid_data(self, mock_config):
         """Test new_monitor with valid OBD response"""
         mock_config.debug = True
@@ -124,7 +124,7 @@ class TestNewMonitor:
         assert topic == "lemons/MONITOR_VVT_B1"
         assert payload == "test_monitor_value"
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     def test_new_monitor_with_null_response(self, mock_config):
         """Test new_monitor with null OBD response"""
         mock_config.debug = True
@@ -137,7 +137,7 @@ class TestNewMonitor:
         # Verify no MQTT publish was called for null response
         assert len(mock_mqttc.published_messages) == 0
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     def test_new_monitor_debug_disabled(self, mock_config):
         """Test new_monitor with debug disabled"""
         mock_config.debug = False
@@ -154,7 +154,7 @@ class TestNewMonitor:
 class TestNewDTC:
     """Test cases for new_dtc function"""
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     def test_new_dtc_with_single_dtc(self, mock_config):
         """Test new_dtc with single DTC"""
         mock_config.debug = True
@@ -172,7 +172,7 @@ class TestNewDTC:
         assert topic == "lemons/DTC/P0300"
         assert payload == "Random/Multiple Cylinder Misfire Detected"
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     def test_new_dtc_with_multiple_dtcs(self, mock_config):
         """Test new_dtc with multiple DTCs"""
         mock_config.debug = True
@@ -200,7 +200,7 @@ class TestNewDTC:
         assert topic2 == "lemons/DTC/P0420"
         assert payload2 == "Catalyst System Efficiency Below Threshold"
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     def test_new_dtc_converts_single_to_list(self, mock_config):
         """Test new_dtc converts single DTC to list format"""
         mock_config.debug = True
@@ -215,7 +215,7 @@ class TestNewDTC:
         # Should still publish correctly
         assert len(mock_mqttc.published_messages) == 1
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     def test_new_dtc_debug_disabled(self, mock_config):
         """Test new_dtc with debug disabled"""
         mock_config.debug = False
@@ -231,7 +231,7 @@ class TestNewDTC:
 class TestMyOBDIntegration:
     """Integration tests for myobd module"""
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     def test_all_functions_with_debug_enabled(self, mock_config):
         """Test all functions work together with debug enabled"""
         mock_config.debug = True

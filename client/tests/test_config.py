@@ -10,7 +10,7 @@ from unittest.mock import patch, mock_open
 # Add the parent directory to the path so we can import the modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.config import Config, config
+from vtms_client.config import Config, config
 
 
 class TestConfig:

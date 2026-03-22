@@ -9,7 +9,7 @@ import pytest
 import obd
 from obd import OBDStatus
 
-from src.obd_service import OBDService
+from vtms_client.obd_service import OBDService
 from tests.conftest import MockOBDAsync
 
 
@@ -34,8 +34,8 @@ class TestOBDServiceSetupWatches:
         # Should not raise
         svc.setup_watches()
 
-    @patch("src.obd_service.obd")
-    @patch("src.obd_service.myobd")
+    @patch("vtms_client.obd_service.obd")
+    @patch("vtms_client.obd_service.myobd")
     def test_setup_watches_registers_supported_commands(self, mock_myobd, mock_obd):
         publisher = MagicMock()
         svc = OBDService(publisher=publisher)
@@ -53,8 +53,8 @@ class TestOBDServiceSetupWatches:
         # Should watch RPM, SPEED, MONITOR_MISFIRE_GENERAL, and GET_DTC
         assert mock_conn.watch.call_count == 4  # 2 metrics + 1 monitor + 1 DTC
 
-    @patch("src.obd_service.obd")
-    @patch("src.obd_service.myobd")
+    @patch("vtms_client.obd_service.obd")
+    @patch("vtms_client.obd_service.myobd")
     def test_setup_watches_skips_unsupported(self, mock_myobd, mock_obd):
         publisher = MagicMock()
         svc = OBDService(publisher=publisher)
@@ -81,8 +81,8 @@ class TestOBDServiceHandleMessage:
         # Should not raise
         svc.handle_message("lemons/obd2/watch", "RPM")
 
-    @patch("src.obd_service.obd")
-    @patch("src.obd_service.myobd")
+    @patch("vtms_client.obd_service.obd")
+    @patch("vtms_client.obd_service.myobd")
     def test_handle_watch(self, mock_myobd, mock_obd):
         publisher = MagicMock()
         svc = OBDService(publisher=publisher)
@@ -98,7 +98,7 @@ class TestOBDServiceHandleMessage:
 
         mock_conn.watch.assert_called_once()
 
-    @patch("src.obd_service.obd")
+    @patch("vtms_client.obd_service.obd")
     def test_handle_unwatch(self, mock_obd):
         publisher = MagicMock()
         svc = OBDService(publisher=publisher)
@@ -113,8 +113,8 @@ class TestOBDServiceHandleMessage:
 
         mock_conn.unwatch.assert_called_once()
 
-    @patch("src.obd_service.obd")
-    @patch("src.obd_service.myobd")
+    @patch("vtms_client.obd_service.obd")
+    @patch("vtms_client.obd_service.myobd")
     def test_handle_query(self, mock_myobd, mock_obd):
         publisher = MagicMock()
         svc = OBDService(publisher=publisher)
@@ -137,7 +137,7 @@ class TestOBDServiceHandleMessage:
 class TestOBDServiceProcessResponse:
     """Test _process_response dispatching."""
 
-    @patch("src.obd_service.myobd")
+    @patch("vtms_client.obd_service.myobd")
     def test_metric_response(self, mock_myobd):
         publisher = MagicMock()
         svc = OBDService(publisher=publisher)
@@ -150,7 +150,7 @@ class TestOBDServiceProcessResponse:
 
         mock_myobd.new_metric.assert_called_once_with(mock_response, publish=publisher)
 
-    @patch("src.obd_service.myobd")
+    @patch("vtms_client.obd_service.myobd")
     def test_monitor_response(self, mock_myobd):
         publisher = MagicMock()
         svc = OBDService(publisher=publisher)
@@ -163,7 +163,7 @@ class TestOBDServiceProcessResponse:
 
         mock_myobd.new_monitor.assert_called_once_with(mock_response, publish=publisher)
 
-    @patch("src.obd_service.myobd")
+    @patch("vtms_client.obd_service.myobd")
     def test_dtc_response(self, mock_myobd):
         publisher = MagicMock()
         svc = OBDService(publisher=publisher)
@@ -176,7 +176,7 @@ class TestOBDServiceProcessResponse:
 
         mock_myobd.new_dtc.assert_called_once_with(mock_response, publish=publisher)
 
-    @patch("src.obd_service.myobd")
+    @patch("vtms_client.obd_service.myobd")
     def test_unknown_command_defaults_to_metric(self, mock_myobd):
         publisher = MagicMock()
         svc = OBDService(publisher=publisher)

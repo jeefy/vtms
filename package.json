@@ -1,0 +1,13 @@
+{
+  "name": "vtms",
+  "private": true,
+  "description": "Vehicle Telemetry Monitoring System — monorepo",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev:server": "pnpm --filter server dev",
+    "dev:web": "pnpm --filter web dev"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

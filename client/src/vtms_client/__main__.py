@@ -10,11 +10,11 @@ import asyncio
 import logging
 import time
 
-from src import config
-from src.mqtt_transport import MQTTTransport
-from src.gps_service import GPSService
-from src.obd_service import OBDService
-from src.mqtt_handlers import (
+from vtms_client import config
+from vtms_client.mqtt_transport import MQTTTransport
+from vtms_client.gps_service import GPSService
+from vtms_client.obd_service import OBDService
+from vtms_client.mqtt_handlers import (
     MQTTMessageRouter,
     create_debug_handler,
     create_flag_handler,
@@ -49,7 +49,7 @@ class VTMSClient:
         # LED support on Raspberry Pi
         if self.is_pi:
             try:
-                from src import led
+                from vtms_client import led
 
                 self.led_handler = led
                 self.led_handler.init()

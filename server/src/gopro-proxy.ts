@@ -1,9 +1,9 @@
-import { Router, type Request, type Response } from "express";
+import { Router, type Request, type Response, type Router as RouterType } from "express";
 
 const GOPRO_IP = process.env.GOPRO_IP ?? "10.5.5.9";
 const GOPRO_BASE_URL = `http://${GOPRO_IP}:8080`;
 
-const router = Router();
+const router: RouterType = Router();
 
 async function proxyGet(
   goProPath: string,

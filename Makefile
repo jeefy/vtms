@@ -1,109 +1,100 @@
-PYTHON   ?= python3
-PIP      ?= pip3
 WHOAMI   := $(shell whoami)
-IMAGE    := $(WHOAMI)/vtms
-
-# ── Python ──────────────────────────────────────────────
-.PHONY: venv requirements requirements-dev pip-compile lint test client server-py
-
-venv:
-	$(PYTHON) -m venv .venv
-	@echo "Activate with: source .venv/bin/activate"
-
-requirements:
-	$(PIP) install -r requirements.txt
-
-requirements-dev: requirements
-	$(PIP) install -r requirements-dev.txt
-
-pip-compile:
-	$(PIP) install pip-tools
-	pip-compile requirements.in -o requirements.txt
-	pip-compile requirements-dev.in -o requirements-dev.txt
-
-lint:
-	$(PYTHON) -m flake8 client.py server.py src/ tests/
-	$(PYTHON) -m black --check client.py server.py src/ tests/
-	$(PYTHON) -m isort --check client.py server.py src/ tests/
-
-format:
-	$(PYTHON) -m black client.py server.py src/ tests/
-	$(PYTHON) -m isort client.py server.py src/ tests/
-
-test:
-	$(PYTHON) -m pytest tests/ -v
-
-test-cov:
-	$(PYTHON) -m pytest tests/ -v --cov=src --cov-report=term-missing
-
-client:
-	$(PYTHON) client.py
-
-server-py:
-	$(PYTHON) -m flask --app server run
-
-# ── Node (server + web) ────────────────────────────────
-.PHONY: server-install server-build server-dev web-install web-build web-dev
-
-server-install:
-	cd server && npm ci
-
-server-build: server-install
-	cd server && npm run build
-
-server-dev:
-	cd server && npm run dev
-
-web-install:
-	cd web && npm ci
-
-web-build: web-install
-	cd web && npm run build
-
-web-dev:
-	cd web && npm run dev
-
-# ── Docker ──────────────────────────────────────────────
-.PHONY: image image-run image-push image-web image-web-run
-
-image:
-	docker build -t $(IMAGE):latest .
-
-image-run: image
-	docker run -v ./data/:/app/data --privileged --rm --name vtms $(IMAGE):latest
-
-image-push: image
-	docker push $(IMAGE):latest
-
-image-web:
-	docker build -f Dockerfile.web -t $(IMAGE)-web:latest .
-
-image-web-run: image-web
-	docker run --rm -p 3001:3001 --name vtms-web $(IMAGE)-web:latest
-
-# ── CI helpers ──────────────────────────────────────────
-.PHONY: ci-python ci-node ci
-
-ci-python: lint test
-
-ci-node: server-build web-build
-
-ci: ci-python ci-node
-
-# ── Local registry (deployment) ─────────────────────────
 REGISTRY ?= 192.168.50.46:5000
 
-image-local:
-	docker buildx build --platform linux/arm64 -t $(REGISTRY)/vtms:latest --load .
+# ── Python (client) ────────────────────────────────────
+.PHONY: client-install client-test client-lint client-format client-run
 
-image-local-push: image-local
+client-install:
+	cd client && uv sync
+
+client-test:
+	cd client && uv run pytest tests/ -v
+
+client-test-cov:
+	cd client && uv run pytest tests/ -v --cov=vtms_client --cov-report=term-missing
+
+client-lint:
+	cd client && uv run ruff check src/ tests/
+
+client-format:
+	cd client && uv run ruff format src/ tests/
+
+client-run:
+	cd client && uv run vtms-client
+
+# ── Python (ingest) ────────────────────────────────────
+.PHONY: ingest-install ingest-run
+
+ingest-install:
+	cd ingest && uv sync
+
+ingest-run:
+	cd ingest && uv run vtms-ingest
+
+# ── Python (sdr) ───────────────────────────────────────
+.PHONY: sdr-install sdr-test sdr-lint sdr-run
+
+sdr-install:
+	cd sdr && uv sync
+
+sdr-test:
+	cd sdr && uv run pytest tests/ -v
+
+sdr-lint:
+	cd sdr && uv run ruff check src/ tests/
+
+sdr-run:
+	cd sdr && uv run vtms-sdr --help
+
+# ── Node (server + web) ───────────────────────────────
+.PHONY: node-install server-build server-dev web-build web-dev
+
+node-install:
+	pnpm install
+
+server-build: node-install
+	pnpm --filter vtms-server build
+
+server-dev:
+	pnpm --filter vtms-server dev
+
+web-build: node-install
+	pnpm --filter web build
+
+web-dev:
+	pnpm --filter web dev
+
+# ── Docker images ──────────────────────────────────────
+.PHONY: image-client image-sdr image-web image-client-push image-sdr-push image-web-push
+
+image-client:
+	docker buildx build --platform linux/arm64 -t $(REGISTRY)/vtms:latest --load client/
+
+image-client-push: image-client
 	docker push $(REGISTRY)/vtms:latest
 
-image-web-local:
+image-sdr:
+	docker buildx build --platform linux/arm64 -t $(REGISTRY)/vtms-sdr:latest --load sdr/
+
+image-sdr-push: image-sdr
+	docker push $(REGISTRY)/vtms-sdr:latest
+
+image-web:
 	docker buildx build --platform linux/arm64 -f Dockerfile.web -t $(REGISTRY)/vtms-web:latest --load .
 
-image-web-local-push: image-web-local
+image-web-push: image-web
 	docker push $(REGISTRY)/vtms-web:latest
 
-deploy-push: image-local-push image-web-local-push
+deploy-push: image-client-push image-sdr-push image-web-push
 	@echo "All images pushed to $(REGISTRY)"
+
+# ── CI helpers ─────────────────────────────────────────
+.PHONY: ci-client ci-sdr ci-node ci test lint
+
+ci-client: client-lint client-test
+ci-sdr: sdr-lint sdr-test
+ci-node: server-build web-build
+ci: ci-client ci-sdr ci-node
+
+test: client-test sdr-test
+lint: client-lint sdr-lint

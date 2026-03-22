@@ -8,18 +8,13 @@ tests.
 """
 
 import asyncio
-import sys
-import os
 import time
 from unittest.mock import Mock, patch, MagicMock
 
 import pytest
 
-# Add the parent directory to the path so we can import the modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from client import VTMSClient
-from src.config import Config
+from vtms_client import VTMSClient
+from vtms_client.config import Config
 
 
 # ---------------------------------------------------------------------------
@@ -61,7 +56,7 @@ class TestVTMSIntegration:
             ("lemons/box", "true"),
         ]
 
-        with patch("src.config.config") as mock_config:
+        with patch("vtms_client.config.config") as mock_config:
             mock_config.debug = False
             for topic, payload in test_messages:
                 msg = _make_mqtt_msg(topic, payload)
@@ -85,7 +80,7 @@ class TestVTMSIntegration:
         client.obd.connection = mock_conn
 
         # Route a watch command through _on_message → OBD fallback
-        with patch("src.config.config") as mock_config:
+        with patch("vtms_client.config.config") as mock_config:
             mock_config.debug = False
 
             msg = _make_mqtt_msg("lemons/obd2/watch", "RPM")
@@ -100,7 +95,7 @@ class TestVTMSIntegration:
         client = VTMSClient()
         client.obd = Mock()
 
-        with patch("src.config.config") as mock_config:
+        with patch("vtms_client.config.config") as mock_config:
             mock_config.debug = False
             msg = _make_mqtt_msg("lemons/obd2/query", "RPM")
             client._on_message(Mock(), None, msg)
@@ -127,7 +122,7 @@ class TestVTMSIntegration:
         client.gps.close.assert_called_once()
         client.mqtt.stop.assert_called_once()
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     @patch.object(Config, "is_raspberrypi", return_value=False)
     def test_debug_mode_integration(self, mock_is_pi, mock_config):
         """Test debug mode can be toggled via MQTT message."""
@@ -154,7 +149,7 @@ class TestVTMSPerformance:
         start_time = time.time()
         message_count = 100
 
-        with patch("src.config.config") as mock_config:
+        with patch("vtms_client.config.config") as mock_config:
             mock_config.debug = False
             for i in range(message_count):
                 client.message_router.route_message(

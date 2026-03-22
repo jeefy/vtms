@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
 
-from src.mqtt_transport import MQTTTransport
+from vtms_client.mqtt_transport import MQTTTransport
 
 
 class TestMQTTTransportInit:
@@ -30,7 +30,7 @@ class TestMQTTTransportInit:
 class TestMQTTTransportConnect:
     """Test connect / start / stop lifecycle."""
 
-    @patch("src.mqtt_transport.mqtt.Client")
+    @patch("vtms_client.mqtt_transport.mqtt.Client")
     def test_connect_success(self, MockClient):
         mock_client = MockClient.return_value
         transport = MQTTTransport()
@@ -41,7 +41,7 @@ class TestMQTTTransportConnect:
         assert transport.mqttc is mock_client
         mock_client.connect.assert_called_once()
 
-    @patch("src.mqtt_transport.mqtt.Client")
+    @patch("vtms_client.mqtt_transport.mqtt.Client")
     def test_connect_failure(self, MockClient):
         mock_client = MockClient.return_value
         mock_client.connect.side_effect = ConnectionRefusedError("refused")
@@ -51,7 +51,7 @@ class TestMQTTTransportConnect:
 
         assert result is False
 
-    @patch("src.mqtt_transport.mqtt.Client")
+    @patch("vtms_client.mqtt_transport.mqtt.Client")
     def test_start_calls_loop_start(self, MockClient):
         mock_client = MockClient.return_value
         transport = MQTTTransport()
@@ -61,7 +61,7 @@ class TestMQTTTransportConnect:
 
         mock_client.loop_start.assert_called_once()
 
-    @patch("src.mqtt_transport.mqtt.Client")
+    @patch("vtms_client.mqtt_transport.mqtt.Client")
     def test_stop_calls_loop_stop_and_disconnect(self, MockClient):
         mock_client = MockClient.return_value
         transport = MQTTTransport()
@@ -76,7 +76,7 @@ class TestMQTTTransportConnect:
 class TestMQTTTransportReconnect:
     """Test reconnect with loop_start bug fix."""
 
-    @patch("src.mqtt_transport.mqtt.Client")
+    @patch("vtms_client.mqtt_transport.mqtt.Client")
     def test_reconnect_calls_loop_start(self, MockClient):
         """Verify the bug fix: reconnect must call loop_start()."""
         mock_client = MockClient.return_value
@@ -88,7 +88,7 @@ class TestMQTTTransportReconnect:
         # connect() is called internally, then loop_start()
         mock_client.loop_start.assert_called()
 
-    @patch("src.mqtt_transport.mqtt.Client")
+    @patch("vtms_client.mqtt_transport.mqtt.Client")
     def test_reconnect_stops_old_client(self, MockClient):
         mock_client = MockClient.return_value
         transport = MQTTTransport()
@@ -106,7 +106,7 @@ class TestMQTTTransportReconnect:
 class TestMQTTTransportPublish:
     """Test publish with buffering."""
 
-    @patch("src.mqtt_transport.mqtt.Client")
+    @patch("vtms_client.mqtt_transport.mqtt.Client")
     def test_publish_when_connected(self, MockClient):
         mock_client = MockClient.return_value
         mock_result = MagicMock()
@@ -122,7 +122,7 @@ class TestMQTTTransportPublish:
         assert result is True
         mock_client.publish.assert_called_once_with("test/topic", "payload", 0, False)
 
-    @patch("src.mqtt_transport.mqtt.Client")
+    @patch("vtms_client.mqtt_transport.mqtt.Client")
     def test_publish_dict_payload_serialized(self, MockClient):
         mock_client = MockClient.return_value
         mock_result = MagicMock()
@@ -148,7 +148,7 @@ class TestMQTTTransportPublish:
         assert len(transport.message_buffer) == 1
         assert transport.message_buffer[0]["topic"] == "test/topic"
 
-    @patch("src.mqtt_transport.mqtt.Client")
+    @patch("vtms_client.mqtt_transport.mqtt.Client")
     def test_publish_buffers_on_failure(self, MockClient):
         mock_client = MockClient.return_value
         mock_result = MagicMock()
@@ -189,7 +189,7 @@ class TestMQTTTransportBuffering:
         topics = [m["topic"] for m in transport.message_buffer]
         assert "topic1" not in topics
 
-    @patch("src.mqtt_transport.mqtt.Client")
+    @patch("vtms_client.mqtt_transport.mqtt.Client")
     def test_flush_sends_buffered_messages(self, MockClient):
         mock_client = MockClient.return_value
         mock_result = MagicMock()
@@ -225,7 +225,7 @@ class TestMQTTTransportBuffering:
         assert len(transport.message_buffer) == 0
         assert mock_client.publish.call_count == 2
 
-    @patch("src.mqtt_transport.mqtt.Client")
+    @patch("vtms_client.mqtt_transport.mqtt.Client")
     def test_flush_drops_expired_messages(self, MockClient):
         mock_client = MockClient.return_value
 

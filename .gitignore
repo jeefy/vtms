@@ -201,3 +201,13 @@ cython_debug/
 
 # VTMS server runtime data
 server/data/
+
+# Playwright test artifacts
+web/test-results/
+web/playwright-report/
+
+# OpenCode
+.opencode/
+
+# Worktrees
+.worktrees/

@@ -2,12 +2,14 @@
 __pycache__
 .venv
 pyvenv.cfg
+*.egg-info
 
-# Build artifacts & deps (rebuilt in container)
-web/node_modules
+# Node
+node_modules
 web/dist
-server/node_modules
 server/dist
+
+# Data
 data
 
 # Dev/CI files
@@ -15,6 +17,7 @@ data
 .github
 .opencode
 .pytest_cache
+.ruff_cache
 .env
 *.md
 LICENSE
@@ -22,10 +25,8 @@ Makefile
 install.sh
 old
 arduino
-tests
 docs
-include
-lib
 e2e
 web/e2e
 web/test-results
+deploy

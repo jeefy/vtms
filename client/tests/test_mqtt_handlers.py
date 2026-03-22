@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 # Add the parent directory to the path so we can import the modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.mqtt_handlers import (
+from vtms_client.mqtt_handlers import (
     MQTTMessageRouter,
     create_debug_handler,
     create_flag_handler,
@@ -85,8 +85,8 @@ class TestMQTTMessageRouter:
         exact_handler.assert_called_once_with("test/topic", "payload")
         pattern_handler.assert_not_called()
 
-    @patch("src.config.config")
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.config.config")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_route_message_no_match(self, mock_logger, mock_config):
         """Test routing message with no matching handler"""
         mock_config.debug = True
@@ -99,7 +99,7 @@ class TestMQTTMessageRouter:
             "No handler found for topic: unknown/topic"
         )
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     def test_route_message_no_match_debug_off(self, mock_config):
         """Test routing message with no match when debug is off"""
         mock_config.debug = False
@@ -113,8 +113,8 @@ class TestMQTTMessageRouter:
 class TestDebugHandler:
     """Test cases for debug message handler"""
 
-    @patch("src.config.config")
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.config.config")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_debug_handler_enable(self, mock_logger, mock_config):
         """Test debug handler enabling debug mode"""
         handler = create_debug_handler()
@@ -124,8 +124,8 @@ class TestDebugHandler:
         assert mock_config.debug is True
         mock_logger.info.assert_called_once_with("Debug mode enabled")
 
-    @patch("src.config.config")
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.config.config")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_debug_handler_disable(self, mock_logger, mock_config):
         """Test debug handler disabling debug mode"""
         handler = create_debug_handler()
@@ -135,8 +135,8 @@ class TestDebugHandler:
         assert mock_config.debug is False
         mock_logger.info.assert_called_once_with("Debug mode disabled")
 
-    @patch("src.config.config")
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.config.config")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_debug_handler_other_value(self, mock_logger, mock_config):
         """Test debug handler with non-true value"""
         handler = create_debug_handler()
@@ -150,7 +150,7 @@ class TestDebugHandler:
 class TestFlagHandler:
     """Test cases for flag message handler"""
 
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_flag_handler_red_flag(self, mock_logger):
         """Test flag handler for red flag"""
         handler = create_flag_handler()
@@ -159,7 +159,7 @@ class TestFlagHandler:
 
         mock_logger.warning.assert_called_once_with("Red Flag: true")
 
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_flag_handler_black_flag(self, mock_logger):
         """Test flag handler for black flag"""
         handler = create_flag_handler()
@@ -168,7 +168,7 @@ class TestFlagHandler:
 
         mock_logger.warning.assert_called_once_with("Black Flag: true")
 
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_flag_handler_false_value(self, mock_logger):
         """Test flag handler with false value"""
         handler = create_flag_handler()
@@ -177,7 +177,7 @@ class TestFlagHandler:
 
         mock_logger.warning.assert_not_called()
 
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_flag_handler_unknown_flag(self, mock_logger):
         """Test flag handler with unknown flag type"""
         handler = create_flag_handler()
@@ -190,7 +190,7 @@ class TestFlagHandler:
 class TestPitHandler:
     """Test cases for pit message handler"""
 
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_pit_handler_pit_soon(self, mock_logger):
         """Test pit handler for pit soon message"""
         handler = create_pit_handler()
@@ -199,7 +199,7 @@ class TestPitHandler:
 
         mock_logger.info.assert_called_once_with("Pit Soon: true")
 
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_pit_handler_box_box(self, mock_logger):
         """Test pit handler for box box message"""
         handler = create_pit_handler()
@@ -208,7 +208,7 @@ class TestPitHandler:
 
         mock_logger.warning.assert_called_once_with("BOX BOX: true")
 
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_pit_handler_false_value(self, mock_logger):
         """Test pit handler with false value"""
         handler = create_pit_handler()
@@ -218,7 +218,7 @@ class TestPitHandler:
         mock_logger.info.assert_not_called()
         mock_logger.warning.assert_not_called()
 
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_pit_handler_unknown_topic(self, mock_logger):
         """Test pit handler with unknown topic"""
         handler = create_pit_handler()
@@ -232,7 +232,7 @@ class TestPitHandler:
 class TestMessageHandler:
     """Test cases for general message handler"""
 
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_message_handler(self, mock_logger):
         """Test general message handler"""
         handler = create_message_handler()
@@ -245,8 +245,8 @@ class TestMessageHandler:
 class TestMQTTHandlersIntegration:
     """Integration tests for MQTT handlers"""
 
-    @patch("src.config.config")
-    @patch("src.mqtt_handlers.logger")
+    @patch("vtms_client.config.config")
+    @patch("vtms_client.mqtt_handlers.logger")
     def test_complete_message_routing(self, mock_logger, mock_config):
         """Test complete message routing workflow"""
         router = MQTTMessageRouter()

@@ -1,19 +1,14 @@
 """
-Unit tests for the VTMSClient orchestrator (client.py)
+Unit tests for the VTMSClient orchestrator (__main__.py)
 
 The heavy lifting (MQTT, GPS, OBD) is now tested in the individual
 service-module test files. These tests verify the thin wiring layer.
 """
 
 import asyncio
-import sys
-import os
 from unittest.mock import Mock, patch, MagicMock
 
-# Add the parent directory to the path so we can import the modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.config import Config
+from vtms_client.config import Config
 
 
 class TestVTMSClientInit:
@@ -21,7 +16,7 @@ class TestVTMSClientInit:
 
     @patch.object(Config, "is_raspberrypi", return_value=False)
     def test_init_creates_services(self, mock_is_pi):
-        from client import VTMSClient
+        from vtms_client import VTMSClient
 
         client = VTMSClient()
 
@@ -34,8 +29,8 @@ class TestVTMSClientInit:
 
     @patch.object(Config, "is_raspberrypi", return_value=True)
     def test_init_raspberry_pi_with_led(self, mock_is_pi):
-        with patch.dict("sys.modules", {"src.led": Mock()}):
-            from client import VTMSClient
+        with patch.dict("sys.modules", {"vtms_client.led": Mock()}):
+            from vtms_client import VTMSClient
 
             client = VTMSClient()
             assert client.is_pi is True
@@ -45,10 +40,10 @@ class TestVTMSClientInit:
     def test_init_raspberry_pi_without_led(self, mock_is_pi):
         """When the LED module can't be imported, led_handler stays None."""
         import importlib
-        import client as client_mod
+        import vtms_client as client_mod
 
-        # Temporarily make 'src.led' unimportable
-        with patch.dict("sys.modules", {"src.led": None}):
+        # Temporarily make 'vtms_client.led' unimportable
+        with patch.dict("sys.modules", {"vtms_client.led": None}):
             importlib.reload(client_mod)
             client = client_mod.VTMSClient()
             assert client.is_pi is True
@@ -63,7 +58,7 @@ class TestVTMSClientMessageHandlers:
 
     @patch.object(Config, "is_raspberrypi", return_value=False)
     def test_handlers_registered(self, mock_is_pi):
-        from client import VTMSClient
+        from vtms_client import VTMSClient
 
         client = VTMSClient()
 
@@ -77,10 +72,10 @@ class TestVTMSClientMessageHandlers:
 class TestVTMSClientOnMessage:
     """Test the top-level _on_message callback."""
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     @patch.object(Config, "is_raspberrypi", return_value=False)
     def test_on_message_routes_to_handler(self, mock_is_pi, mock_config):
-        from client import VTMSClient
+        from vtms_client import VTMSClient
 
         mock_config.debug = False
 
@@ -99,10 +94,10 @@ class TestVTMSClientOnMessage:
             "lemons/debug", "true"
         )
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     @patch.object(Config, "is_raspberrypi", return_value=False)
     def test_on_message_falls_back_to_obd(self, mock_is_pi, mock_config):
-        from client import VTMSClient
+        from vtms_client import VTMSClient
 
         mock_config.debug = False
 
@@ -120,11 +115,11 @@ class TestVTMSClientOnMessage:
 
         client.obd.handle_message.assert_called_once_with("lemons/obd2/watch", "RPM")
 
-    @patch("src.config.config")
+    @patch("vtms_client.config.config")
     @patch.object(Config, "is_raspberrypi", return_value=False)
     def test_on_message_handles_exception(self, mock_is_pi, mock_config):
         """Errors in message handling should be caught, not crash the loop."""
-        from client import VTMSClient
+        from vtms_client import VTMSClient
 
         mock_config.debug = False
 
@@ -142,7 +137,7 @@ class TestVTMSClientGPSOBDWiring:
 
     @patch.object(Config, "is_raspberrypi", return_value=False)
     def test_gps_publisher_is_mqtt_publish(self, mock_is_pi):
-        from client import VTMSClient
+        from vtms_client import VTMSClient
 
         client = VTMSClient()
         # Bound-method identity changes per access; compare underlying function + object
@@ -151,7 +146,7 @@ class TestVTMSClientGPSOBDWiring:
 
     @patch.object(Config, "is_raspberrypi", return_value=False)
     def test_obd_publisher_is_mqtt_publish(self, mock_is_pi):
-        from client import VTMSClient
+        from vtms_client import VTMSClient
 
         client = VTMSClient()
         assert client.obd.publisher.__func__ is client.mqtt.publish.__func__
