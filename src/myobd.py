@@ -104,17 +104,17 @@ monitor_commands = [
 ]
 
 
-def new_dtc(r, mqttc):
+def new_dtc(r, publish):
     if not isinstance(r.value, list):
         r.value = [r.value]
 
     for dtc in r.value:
         if vtms_config.debug:
             print("OBD2 - New DTC: ", dtc)
-        mqttc.publish("lemons/DTC/" + dtc[0], dtc[1])
+        publish("lemons/DTC/" + dtc[0], dtc[1])
 
 
-def new_monitor(r, mqttc):
+def new_monitor(r, publish):
     # Skip if null value
     if r.is_null():
         return
@@ -125,10 +125,10 @@ def new_monitor(r, mqttc):
         print(str(r.value))
         print("----")
 
-    mqttc.publish("lemons/{}".format(r.command.name), str(r.value))
+    publish("lemons/{}".format(r.command.name), str(r.value))
 
 
-def new_metric(r, mqttc):
+def new_metric(r, publish):
     # Skip if null value
     if r.is_null():
         return
@@ -136,4 +136,4 @@ def new_metric(r, mqttc):
     if vtms_config.debug:
         print("OBD2 - New Metric: {} - {}".format(r.command.name, r.value.magnitude))
 
-    mqttc.publish("lemons/{}".format(r.command.name), str(r.value))
+    publish("lemons/{}".format(r.command.name), str(r.value))

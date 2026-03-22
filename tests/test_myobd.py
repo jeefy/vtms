@@ -68,7 +68,7 @@ class TestNewMetric:
         mock_value.magnitude = 2500
         response = MockOBDResponse("RPM", mock_value)
 
-        myobd.new_metric(response, mock_mqttc)
+        myobd.new_metric(response, mock_mqttc.publish)
 
         # Verify MQTT publish was called
         assert len(mock_mqttc.published_messages) == 1
@@ -84,7 +84,7 @@ class TestNewMetric:
 
         response = MockOBDResponse("RPM", None, is_null=True)
 
-        myobd.new_metric(response, mock_mqttc)
+        myobd.new_metric(response, mock_mqttc.publish)
 
         # Verify no MQTT publish was called for null response
         assert len(mock_mqttc.published_messages) == 0
@@ -99,7 +99,7 @@ class TestNewMetric:
         mock_value.magnitude = 2500
         response = MockOBDResponse("RPM", mock_value)
 
-        myobd.new_metric(response, mock_mqttc)
+        myobd.new_metric(response, mock_mqttc.publish)
 
         # Should still publish even with debug disabled
         assert len(mock_mqttc.published_messages) == 1
@@ -116,7 +116,7 @@ class TestNewMonitor:
 
         response = MockOBDResponse("MONITOR_VVT_B1", "test_monitor_value")
 
-        myobd.new_monitor(response, mock_mqttc)
+        myobd.new_monitor(response, mock_mqttc.publish)
 
         # Verify MQTT publish was called
         assert len(mock_mqttc.published_messages) == 1
@@ -132,7 +132,7 @@ class TestNewMonitor:
 
         response = MockOBDResponse("MONITOR_VVT_B1", None, is_null=True)
 
-        myobd.new_monitor(response, mock_mqttc)
+        myobd.new_monitor(response, mock_mqttc.publish)
 
         # Verify no MQTT publish was called for null response
         assert len(mock_mqttc.published_messages) == 0
@@ -145,7 +145,7 @@ class TestNewMonitor:
 
         response = MockOBDResponse("MONITOR_VVT_B1", "test_value")
 
-        myobd.new_monitor(response, mock_mqttc)
+        myobd.new_monitor(response, mock_mqttc.publish)
 
         # Should still publish even with debug disabled
         assert len(mock_mqttc.published_messages) == 1
@@ -164,7 +164,7 @@ class TestNewDTC:
         dtc_tuple = ("P0300", "Random/Multiple Cylinder Misfire Detected")
         response = MockOBDResponse("GET_DTC", dtc_tuple)
 
-        myobd.new_dtc(response, mock_mqttc)
+        myobd.new_dtc(response, mock_mqttc.publish)
 
         # Verify MQTT publish was called
         assert len(mock_mqttc.published_messages) == 1
@@ -185,7 +185,7 @@ class TestNewDTC:
         ]
         response = MockOBDResponse("GET_DTC", dtc_list)
 
-        myobd.new_dtc(response, mock_mqttc)
+        myobd.new_dtc(response, mock_mqttc.publish)
 
         # Verify MQTT publish was called for each DTC
         assert len(mock_mqttc.published_messages) == 2
@@ -210,8 +210,7 @@ class TestNewDTC:
         dtc_tuple = ("P0300", "Random/Multiple Cylinder Misfire Detected")
         response = MockOBDResponse("GET_DTC", dtc_tuple)
 
-        # The function should convert single DTC to list
-        myobd.new_dtc(response, mock_mqttc)
+        myobd.new_dtc(response, mock_mqttc.publish)
 
         # Should still publish correctly
         assert len(mock_mqttc.published_messages) == 1
@@ -225,9 +224,7 @@ class TestNewDTC:
         dtc_tuple = ("P0300", "Random/Multiple Cylinder Misfire Detected")
         response = MockOBDResponse("GET_DTC", dtc_tuple)
 
-        myobd.new_dtc(response, mock_mqttc)
-
-        # Should still publish even with debug disabled
+        myobd.new_dtc(response, mock_mqttc.publish)
         assert len(mock_mqttc.published_messages) == 1
 
 
@@ -244,15 +241,15 @@ class TestMyOBDIntegration:
         mock_value = Mock()
         mock_value.magnitude = 2500
         metric_response = MockOBDResponse("RPM", mock_value)
-        myobd.new_metric(metric_response, mock_mqttc)
+        myobd.new_metric(metric_response, mock_mqttc.publish)
 
         # Test monitor
         monitor_response = MockOBDResponse("MONITOR_VVT_B1", "monitor_value")
-        myobd.new_monitor(monitor_response, mock_mqttc)
+        myobd.new_monitor(monitor_response, mock_mqttc.publish)
 
         # Test DTC
         dtc_response = MockOBDResponse("GET_DTC", ("P0300", "Misfire"))
-        myobd.new_dtc(dtc_response, mock_mqttc)
+        myobd.new_dtc(dtc_response, mock_mqttc.publish)
 
         # Verify all published
         assert len(mock_mqttc.published_messages) == 3
