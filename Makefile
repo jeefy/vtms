@@ -68,22 +68,22 @@ web-dev:
 .PHONY: image-client image-sdr image-web image-client-push image-sdr-push image-web-push
 
 image-client:
-	docker buildx build --platform linux/arm64 -t $(REGISTRY)/vtms:latest --load client/
+	docker buildx build --network=host --platform linux/arm64 -t $(REGISTRY)/vtms:latest --load client/
 
 image-client-push: image-client
-	docker push $(REGISTRY)/vtms:latest
+	skopeo copy --dest-tls-verify=false docker-daemon:$(REGISTRY)/vtms:latest docker://$(REGISTRY)/vtms:latest
 
 image-sdr:
-	docker buildx build --platform linux/arm64 -t $(REGISTRY)/vtms-sdr:latest --load sdr/
+	docker buildx build --network=host --platform linux/arm64 -t $(REGISTRY)/vtms-sdr:latest --load sdr/
 
 image-sdr-push: image-sdr
-	docker push $(REGISTRY)/vtms-sdr:latest
+	skopeo copy --dest-tls-verify=false docker-daemon:$(REGISTRY)/vtms-sdr:latest docker://$(REGISTRY)/vtms-sdr:latest
 
 image-web:
-	docker buildx build --platform linux/arm64 -f Dockerfile.web -t $(REGISTRY)/vtms-web:latest --load .
+	docker buildx build --network=host --platform linux/arm64 -f Dockerfile.web -t $(REGISTRY)/vtms-web:latest --load .
 
 image-web-push: image-web
-	docker push $(REGISTRY)/vtms-web:latest
+	skopeo copy --dest-tls-verify=false docker-daemon:$(REGISTRY)/vtms-web:latest docker://$(REGISTRY)/vtms-web:latest
 
 deploy-push: image-client-push image-sdr-push image-web-push
 	@echo "All images pushed to $(REGISTRY)"
