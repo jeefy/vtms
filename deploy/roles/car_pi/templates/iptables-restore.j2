@@ -1,0 +1,18 @@
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+# NAT traffic from hotspot clients through Tailscale
+-A POSTROUTING -s {{ hotspot_subnet }} ! -o wlan0 -j MASQUERADE
+COMMIT
+
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+# Allow forwarding from hotspot to any outbound interface
+-A FORWARD -i wlan0 -j ACCEPT
+# Allow return traffic
+-A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+COMMIT

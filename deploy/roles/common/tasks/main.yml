@@ -1,0 +1,102 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: yes
+
+- name: Install prerequisite packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - gnupg
+      - apt-transport-https
+      - ca-certificates
+      - cockpit
+    state: present
+  become: yes
+
+- name: Enable Cockpit
+  ansible.builtin.systemd:
+    name: cockpit.socket
+    enabled: yes
+    state: started
+  become: yes
+
+# ── Docker ──────────────────────────────────────────────
+- name: Check if Docker is installed
+  ansible.builtin.command: docker --version
+  register: docker_check
+  ignore_errors: yes
+  changed_when: false
+
+- name: Install Docker via get.docker.com
+  ansible.builtin.shell: curl -sSL https://get.docker.com | sh
+  args:
+    creates: /usr/bin/docker
+  when: docker_check.rc != 0
+  become: yes
+
+- name: Add pi user to docker group
+  ansible.builtin.user:
+    name: pi
+    groups: docker
+    append: yes
+  become: yes
+
+- name: Install Docker Compose plugin
+  ansible.builtin.apt:
+    name: docker-compose-plugin
+    state: present
+  become: yes
+
+- name: Configure Docker daemon (insecure registry)
+  ansible.builtin.template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    mode: "0644"
+  become: yes
+  notify: Restart Docker
+
+- name: Ensure Docker is running
+  ansible.builtin.systemd:
+    name: docker
+    enabled: yes
+    state: started
+  become: yes
+
+# ── Tailscale ───────────────────────────────────────────
+- name: Check if Tailscale is installed
+  ansible.builtin.command: tailscale --version
+  register: tailscale_check
+  ignore_errors: yes
+  changed_when: false
+
+- name: Install Tailscale
+  ansible.builtin.shell: curl -fsSL https://tailscale.com/install.sh | sh
+  args:
+    creates: /usr/bin/tailscale
+  when: tailscale_check.rc != 0
+  become: yes
+
+- name: Bring up Tailscale
+  ansible.builtin.command: >
+    tailscale up
+    --accept-routes
+    --exit-node={{ tailscale_exit_node }}
+    --exit-node-allow-lan-access=true
+    --auth-key={{ tailscale_auth_key }}
+    --hostname={{ inventory_hostname }}
+  become: yes
+  register: tailscale_up
+  changed_when: "'Success' in tailscale_up.stdout or tailscale_up.rc == 0"
+
+# ── Compose directory ──────────────────────────────────
+- name: Create compose directory
+  ansible.builtin.file:
+    path: "{{ compose_dir }}"
+    state: directory
+    owner: pi
+    group: pi
+    mode: "0755"
+  become: yes

@@ -1,0 +1,7 @@
+---
+- name: Provision Car-Pi
+  hosts: car_pi
+  become: yes
+  roles:
+    - common
+    - car_pi

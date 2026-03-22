@@ -1,0 +1,12 @@
+all:
+  children:
+    car_pi:
+      hosts:
+        car-pi:
+          # Set to actual Tailscale IP or MagicDNS hostname after first setup
+          ansible_host: car-pi
+    base_pi:
+      hosts:
+        base-pi:
+          # Set to actual Tailscale IP or MagicDNS hostname after first setup
+          ansible_host: base-pi

@@ -1,0 +1,6 @@
+---
+# vtms-sdr default recording arguments (override as needed)
+vtms_sdr_args: "record --freq 462.5625"
+
+# Kiosk browser settings
+kiosk_url: "http://localhost:3001"

@@ -7,6 +7,7 @@ import psycopg2.extras
 from src import config
 
 print("Not Fast Not Furious!")
+config.config.validate_postgres()
 
 
 # The callback for when the client receives a CONNACK response from the server.

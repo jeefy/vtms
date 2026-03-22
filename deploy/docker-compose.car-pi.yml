@@ -1,0 +1,28 @@
+services:
+  vtms-client:
+    image: 192.168.50.46:5000/vtms:latest
+    container_name: vtms-client
+    restart: always
+    privileged: true
+    network_mode: host
+    volumes:
+      - /dev:/dev
+      - vtms-data:/app/data
+    environment:
+      - MQTT_SERVER=192.168.50.24
+      - MQTT_PORT=1883
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 120 --cleanup
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+
+volumes:
+  vtms-data:

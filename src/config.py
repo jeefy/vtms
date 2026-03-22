@@ -30,7 +30,8 @@ class Config:
         default_factory=lambda: os.environ.get("POSTGRES_PASSWORD", "")
     )
 
-    def __post_init__(self):
+    def validate_postgres(self):
+        """Validate Postgres config. Call from server.py only."""
         if not self.postgres_user:
             raise EnvironmentError("POSTGRES_USER environment variable is required")
         if not self.postgres_password:

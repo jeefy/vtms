@@ -1,0 +1,7 @@
+---
+hotspot_ssid: "vtms"
+hotspot_password: "REDACTED_HOTSPOT_PASSWORD"
+hotspot_band: "bg"
+hotspot_channel: 6
+# NetworkManager hotspot subnet (default 10.42.0.0/24)
+hotspot_subnet: "10.42.0.0/24"

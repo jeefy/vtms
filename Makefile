@@ -89,3 +89,21 @@ ci-python: lint test
 ci-node: server-build web-build
 
 ci: ci-python ci-node
+
+# ── Local registry (deployment) ─────────────────────────
+REGISTRY ?= 192.168.50.46:5000
+
+image-local:
+	docker buildx build --platform linux/arm64 -t $(REGISTRY)/vtms:latest --load .
+
+image-local-push: image-local
+	docker push $(REGISTRY)/vtms:latest
+
+image-web-local:
+	docker buildx build --platform linux/arm64 -f Dockerfile.web -t $(REGISTRY)/vtms-web:latest --load .
+
+image-web-local-push: image-web-local
+	docker push $(REGISTRY)/vtms-web:latest
+
+deploy-push: image-local-push image-web-local-push
+	@echo "All images pushed to $(REGISTRY)"

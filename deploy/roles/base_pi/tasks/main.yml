@@ -1,0 +1,71 @@
+---
+# ── Kiosk Browser Setup ───────────────────────────────
+- name: Install kiosk packages
+  ansible.builtin.apt:
+    name:
+      - chromium-browser
+      - unclutter
+    state: present
+  become: yes
+
+- name: Configure auto-login to desktop
+  ansible.builtin.command: raspi-config nonint do_boot_behaviour B4
+  become: yes
+  changed_when: false
+
+- name: Disable screen blanking
+  ansible.builtin.command: raspi-config nonint do_blanking 1
+  become: yes
+  changed_when: false
+
+- name: Create autostart directory
+  ansible.builtin.file:
+    path: /home/pi/.config/autostart
+    state: directory
+    owner: pi
+    group: pi
+    mode: "0755"
+
+- name: Deploy kiosk autostart entry
+  ansible.builtin.template:
+    src: vtms-kiosk.desktop.j2
+    dest: /home/pi/.config/autostart/vtms-kiosk.desktop
+    owner: pi
+    group: pi
+    mode: "0644"
+
+- name: Deploy unclutter autostart (hide mouse cursor)
+  ansible.builtin.copy:
+    dest: /home/pi/.config/autostart/unclutter.desktop
+    owner: pi
+    group: pi
+    mode: "0644"
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name=Unclutter
+      Exec=unclutter -idle 0.5 -root
+      Hidden=false
+  become: no
+
+# ── Docker Compose stack ───────────────────────────────
+- name: Copy base-pi docker-compose file
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../docker-compose.base-pi.yml"
+    dest: "{{ compose_dir }}/docker-compose.yml"
+    owner: pi
+    group: pi
+    mode: "0644"
+  become: yes
+
+- name: Pull latest images
+  ansible.builtin.command: docker compose pull
+  args:
+    chdir: "{{ compose_dir }}"
+  changed_when: false
+
+- name: Start base-pi services
+  ansible.builtin.command: docker compose up -d --remove-orphans
+  args:
+    chdir: "{{ compose_dir }}"
+  changed_when: false

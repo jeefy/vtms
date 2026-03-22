@@ -98,12 +98,20 @@ class TestConfig:
         assert hasattr(config, "debug")
         assert hasattr(config, "mqtt_server")
 
-    def test_config_requires_postgres_user(self, monkeypatch):
-        """Test Config raises EnvironmentError when POSTGRES_USER is missing"""
+    def test_config_without_postgres_creates_successfully(self, monkeypatch):
+        """Test Config can be created without postgres env vars (for client use)"""
         monkeypatch.delenv("POSTGRES_USER", raising=False)
         monkeypatch.delenv("POSTGRES_PASSWORD", raising=False)
+        cfg = Config()
+        assert cfg.postgres_user == ""
+
+    def test_validate_postgres_raises_without_env(self, monkeypatch):
+        """Test validate_postgres raises EnvironmentError when env vars missing"""
+        monkeypatch.delenv("POSTGRES_USER", raising=False)
+        monkeypatch.delenv("POSTGRES_PASSWORD", raising=False)
+        cfg = Config()
         with pytest.raises(EnvironmentError):
-            Config()
+            cfg.validate_postgres()
 
     def test_config_reads_env_vars(self, monkeypatch):
         """Test Config reads postgres credentials from env vars"""

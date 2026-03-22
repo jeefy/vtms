@@ -1,0 +1,7 @@
+---
+- name: Provision Base-Pi
+  hosts: base_pi
+  become: yes
+  roles:
+    - common
+    - base_pi

@@ -1,0 +1,4 @@
+---
+# Full site deployment — both Pis
+- import_playbook: car-pi.yml
+- import_playbook: base-pi.yml
