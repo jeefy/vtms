@@ -1,0 +1,11 @@
+# vtms-sdr preset profiles
+
+presets:
+  # --- Baofeng ---
+  baofeng:
+    freq: "435.625M"
+    mod: fm
+    squelch: -30
+    gain: 14
+    ppm: 40
+    label: "BAOFENG"

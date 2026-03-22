@@ -1,0 +1,2 @@
+[console_scripts]
+vtms-sdr = vtms_sdr.cli:main

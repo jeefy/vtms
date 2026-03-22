@@ -1,0 +1,73 @@
+# vtms-sdr preset profiles
+#
+# Copy this file to presets.yaml (or vtms-sdr.yaml) in your working directory,
+# then use presets with:
+#
+#   vtms-sdr record --preset nascar
+#   vtms-sdr record --preset marine-ch16 --monitor
+#
+# Each preset must have at least a "freq" field.
+# Optional fields: mod, gain, squelch, label
+
+presets:
+  # --- NASCAR / Racing ---
+  nascar:
+    freq: "462.5625M"
+    mod: fm
+    gain: 40
+    squelch: -35
+    label: "SPOTTER"
+
+  pit-crew:
+    freq: "464.500M"
+    mod: fm
+    squelch: -30
+    label: "PIT"
+
+  # --- Marine ---
+  marine-ch16:
+    freq: "156.8M"
+    mod: fm
+    squelch: -35
+    label: "MARINE-16"
+
+  # --- Amateur Radio ---
+  two-meter-calling:
+    freq: "146.52M"
+    mod: fm
+
+  seventy-cm-calling:
+    freq: "446.0M"
+    mod: fm
+
+  forty-meter-ssb:
+    freq: "7.2M"
+    mod: ssb
+    squelch: -100
+
+  # --- GMRS ---
+  gmrs-ch1:
+    freq: "462.5625M"
+    mod: fm
+    squelch: -35
+    label: "GMRS-1"
+
+  gmrs-ch15:
+    freq: "462.550M"
+    mod: fm
+    squelch: -35
+    label: "GMRS-15"
+
+  # --- Weather ---
+  noaa-weather:
+    freq: "162.55M"
+    mod: fm
+    squelch: -50
+    label: "NOAA"
+
+  # --- Aviation ---
+  air-guard:
+    freq: "121.5M"
+    mod: am
+    squelch: -40
+    label: "GUARD"

@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Linting / formatting
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# Recordings output
+recordings/
+
+# Worktrees
+.worktrees/
+
+# OpenCode
+.opencode/
+
+# Bees
+.bees/
