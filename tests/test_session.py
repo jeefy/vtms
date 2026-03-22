@@ -376,6 +376,9 @@ class TestRecordingSession:
         mock_demod = MagicMock()
         audio_out = np.zeros(128, dtype=np.float32)
         mock_demod.demodulate.return_value = audio_out
+        # Explicitly set pre_hp_audio to None so audio_stream yields 2-tuples
+        # (MagicMock auto-creates attributes, which would make it truthy)
+        mock_demod.pre_hp_audio = None
         MockDemod.create.return_value = mock_demod
 
         # Capture what gets passed to recorder.record()
@@ -535,3 +538,235 @@ class TestSessionMonitorUIWiring:
 
             # Verify squelch callback was wired
             assert mock_recorder._squelch_callback == mock_ui.update_squelch
+
+
+class TestRecordConfigDCSCode:
+    """Test dcs_code field on RecordConfig."""
+
+    def test_dcs_code_default_none(self):
+        """RecordConfig.dcs_code should default to None."""
+        from vtms_sdr.session import RecordConfig
+
+        config = RecordConfig(
+            freq=462_562_500,
+            mod="fm",
+            output_path=Path("test.wav"),
+            audio_format="wav",
+        )
+        assert config.dcs_code is None
+
+    def test_dcs_code_accepts_int(self):
+        """RecordConfig should accept a dcs_code integer."""
+        from vtms_sdr.session import RecordConfig
+
+        config = RecordConfig(
+            freq=462_562_500,
+            mod="fm",
+            output_path=Path("test.wav"),
+            audio_format="wav",
+            dcs_code=23,
+        )
+        assert config.dcs_code == 23
+
+
+class TestSessionAudioStreamPreHP:
+    """Test that audio_stream yields pre_hp_audio when available."""
+
+    @patch("vtms_sdr.sdr.SDRDevice")
+    @patch("vtms_sdr.demod.Demodulator")
+    @patch("vtms_sdr.recorder.AudioRecorder")
+    def test_audio_stream_yields_pre_hp_when_available(
+        self, MockRecorder, MockDemod, MockSDR
+    ):
+        """audio_stream should yield 3-tuples when demod has pre_hp_audio."""
+        from vtms_sdr.session import RecordingSession
+
+        iq_block = np.zeros(256, dtype=np.complex64)
+        audio_out = np.zeros(128, dtype=np.float32)
+        pre_hp_out = np.ones(128, dtype=np.float32)
+
+        mock_sdr = MagicMock()
+        mock_sdr.sample_rate = 2_048_000
+        mock_sdr.center_freq = 146_520_000
+        mock_sdr.get_info.return_value = {"gain": "auto"}
+        mock_sdr.stream.return_value = iter([iq_block])
+        MockSDR.return_value.__enter__ = MagicMock(return_value=mock_sdr)
+        MockSDR.return_value.__exit__ = MagicMock(return_value=False)
+
+        mock_demod = MagicMock()
+        mock_demod.demodulate.return_value = audio_out
+        mock_demod.pre_hp_audio = pre_hp_out
+        MockDemod.create.return_value = mock_demod
+
+        recorded_items = []
+
+        def fake_record(audio_gen, **kwargs):
+            for item in audio_gen:
+                recorded_items.append(item)
+            return {
+                "file": "test.wav",
+                "audio_duration_sec": 0.0,
+                "file_size_bytes": 0,
+            }
+
+        mock_recorder = MagicMock()
+        mock_recorder.record.side_effect = fake_record
+        MockRecorder.return_value = mock_recorder
+
+        from vtms_sdr.session import RecordConfig
+
+        config = RecordConfig(
+            freq=146_520_000,
+            mod="fm",
+            output_path=Path("test.wav"),
+            audio_format="wav",
+        )
+        session = RecordingSession(config)
+        session.run()
+
+        assert len(recorded_items) == 1
+        assert len(recorded_items[0]) == 3
+        power_db, audio, pre_hp = recorded_items[0]
+        assert isinstance(power_db, float)
+        assert audio is audio_out
+        assert pre_hp is pre_hp_out
+
+    @patch("vtms_sdr.sdr.SDRDevice")
+    @patch("vtms_sdr.demod.Demodulator")
+    @patch("vtms_sdr.recorder.AudioRecorder")
+    def test_audio_stream_yields_2tuple_when_no_pre_hp(
+        self, MockRecorder, MockDemod, MockSDR
+    ):
+        """audio_stream should yield 2-tuples when demod has no pre_hp_audio."""
+        from vtms_sdr.session import RecordingSession
+
+        iq_block = np.zeros(256, dtype=np.complex64)
+        audio_out = np.zeros(128, dtype=np.float32)
+
+        mock_sdr = MagicMock()
+        mock_sdr.sample_rate = 2_048_000
+        mock_sdr.center_freq = 146_520_000
+        mock_sdr.get_info.return_value = {"gain": "auto"}
+        mock_sdr.stream.return_value = iter([iq_block])
+        MockSDR.return_value.__enter__ = MagicMock(return_value=mock_sdr)
+        MockSDR.return_value.__exit__ = MagicMock(return_value=False)
+
+        mock_demod = MagicMock(spec=["demodulate"])  # No pre_hp_audio attribute
+        mock_demod.demodulate.return_value = audio_out
+        MockDemod.create.return_value = mock_demod
+
+        recorded_items = []
+
+        def fake_record(audio_gen, **kwargs):
+            for item in audio_gen:
+                recorded_items.append(item)
+            return {
+                "file": "test.wav",
+                "audio_duration_sec": 0.0,
+                "file_size_bytes": 0,
+            }
+
+        mock_recorder = MagicMock()
+        mock_recorder.record.side_effect = fake_record
+        MockRecorder.return_value = mock_recorder
+
+        from vtms_sdr.session import RecordConfig
+
+        config = RecordConfig(
+            freq=146_520_000,
+            mod="fm",
+            output_path=Path("test.wav"),
+            audio_format="wav",
+        )
+        session = RecordingSession(config)
+        session.run()
+
+        assert len(recorded_items) == 1
+        assert len(recorded_items[0]) == 2
+        power_db, audio = recorded_items[0]
+        assert isinstance(power_db, float)
+        assert audio is audio_out
+
+
+class TestSessionDCSWiring:
+    """Test that session wires DCS decoder to recorder when dcs_code is set."""
+
+    @patch("vtms_sdr.sdr.SDRDevice")
+    @patch("vtms_sdr.demod.Demodulator")
+    @patch("vtms_sdr.recorder.AudioRecorder")
+    def test_headless_passes_dcs_decoder_when_code_set(
+        self, MockRecorder, MockDemod, MockSDR
+    ):
+        """_run_headless should create DCS decoder and pass to recorder when dcs_code is set."""
+        from vtms_sdr.session import RecordingSession, RecordConfig
+
+        mock_sdr = MagicMock()
+        mock_sdr.sample_rate = 2_048_000
+        mock_sdr.center_freq = 462_562_500
+        mock_sdr.get_info.return_value = {"gain": "auto"}
+        mock_sdr.stream.return_value = iter([])
+        MockSDR.return_value.__enter__ = MagicMock(return_value=mock_sdr)
+        MockSDR.return_value.__exit__ = MagicMock(return_value=False)
+
+        MockDemod.create.return_value = MagicMock()
+
+        mock_recorder = MagicMock()
+        mock_recorder.record.return_value = {
+            "file": "test.wav",
+            "audio_duration_sec": 0.0,
+            "file_size_bytes": 0,
+        }
+        MockRecorder.return_value = mock_recorder
+
+        config = RecordConfig(
+            freq=462_562_500,
+            mod="fm",
+            output_path=Path("test.wav"),
+            audio_format="wav",
+            dcs_code=23,
+        )
+        session = RecordingSession(config)
+        session.run()
+
+        call_kwargs = MockRecorder.call_args[1]
+        assert call_kwargs.get("dcs_decoder") is not None
+
+    @patch("vtms_sdr.sdr.SDRDevice")
+    @patch("vtms_sdr.demod.Demodulator")
+    @patch("vtms_sdr.recorder.AudioRecorder")
+    def test_headless_no_dcs_decoder_when_code_not_set(
+        self, MockRecorder, MockDemod, MockSDR
+    ):
+        """_run_headless should not pass dcs_decoder when dcs_code is None."""
+        from vtms_sdr.session import RecordingSession, RecordConfig
+
+        mock_sdr = MagicMock()
+        mock_sdr.sample_rate = 2_048_000
+        mock_sdr.center_freq = 462_562_500
+        mock_sdr.get_info.return_value = {"gain": "auto"}
+        mock_sdr.stream.return_value = iter([])
+        MockSDR.return_value.__enter__ = MagicMock(return_value=mock_sdr)
+        MockSDR.return_value.__exit__ = MagicMock(return_value=False)
+
+        MockDemod.create.return_value = MagicMock()
+
+        mock_recorder = MagicMock()
+        mock_recorder.record.return_value = {
+            "file": "test.wav",
+            "audio_duration_sec": 0.0,
+            "file_size_bytes": 0,
+        }
+        MockRecorder.return_value = mock_recorder
+
+        config = RecordConfig(
+            freq=462_562_500,
+            mod="fm",
+            output_path=Path("test.wav"),
+            audio_format="wav",
+        )
+        session = RecordingSession(config)
+        session.run()
+
+        call_kwargs = MockRecorder.call_args[1]
+        # Should either not have dcs_decoder or it should be None
+        assert call_kwargs.get("dcs_decoder") is None

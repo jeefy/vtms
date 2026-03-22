@@ -44,6 +44,7 @@ class RecordConfig:
     monitor: AudioMonitor | None = None
     volume: float = 0.5
     label: str | None = None
+    dcs_code: int | None = None
 
 
 class RecordingSession:
@@ -84,7 +85,13 @@ class RecordingSession:
                 def audio_stream():
                     for iq_block in sdr.stream():
                         iq_pwr = iq_power_db(iq_block)
-                        yield (iq_pwr, demod_holder[0].demodulate(iq_block))
+                        audio = demod_holder[0].demodulate(iq_block)
+                        # Include pre-HP audio if the demodulator provides it
+                        pre_hp = getattr(demod_holder[0], "pre_hp_audio", None)
+                        if pre_hp is not None:
+                            yield (iq_pwr, audio, pre_hp)
+                        else:
+                            yield (iq_pwr, audio)
 
                 if cfg.monitor:
                     stats = self._run_with_monitor(cfg, audio_stream, sdr, demod_holder)
@@ -101,12 +108,19 @@ class RecordingSession:
         """Record without a TUI monitor."""
         from .recorder import AudioRecorder
 
+        dcs_decoder = None
+        if cfg.dcs_code is not None:
+            from .dcs import DCSDecoder
+
+            dcs_decoder = DCSDecoder(cfg.dcs_code)
+
         recorder = AudioRecorder(
             output_path=cfg.output_path,
             audio_format=cfg.audio_format,
             squelch_db=cfg.squelch_db,
             transcriber=cfg.transcriber,
             audio_monitor=cfg.monitor,
+            dcs_decoder=dcs_decoder,
         )
         return recorder.record(audio_stream(), duration=cfg.duration)
 
@@ -128,12 +142,19 @@ class RecordingSession:
             if cfg.transcriber is not None:
                 model_size = getattr(cfg.transcriber, "model_size", None)
 
+            dcs_decoder = None
+            if cfg.dcs_code is not None:
+                from .dcs import DCSDecoder
+
+                dcs_decoder = DCSDecoder(cfg.dcs_code)
+
             recorder = AudioRecorder(
                 output_path=cfg.output_path,
                 audio_format=cfg.audio_format,
                 squelch_db=cfg.squelch_db,
                 transcriber=cfg.transcriber,
                 audio_monitor=cfg.monitor,
+                dcs_decoder=dcs_decoder,
             )
 
             monitor_ui = MonitorUI(

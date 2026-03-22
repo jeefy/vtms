@@ -199,6 +199,9 @@ class FMDemodulator(Demodulator):
         # --- AGC state ---
         self._agc_gain = 3.0  # Initial gain (same as old fixed gain)
 
+        # Pre-HP audio tap for DCS/CTCSS decoders (set on each demodulate call)
+        self.pre_hp_audio: np.ndarray | None = None
+
         # State for continuous demodulation across blocks
         self._prev_sample = np.complex64(0)
 
@@ -243,6 +246,9 @@ class FMDemodulator(Demodulator):
 
         # Stage 5: De-emphasis filter (75 µs).
         audio = self._apply_deemphasis(audio)
+
+        # --- Tap: save pre-HP audio for DCS/CTCSS decoders ---
+        self.pre_hp_audio = audio.copy().astype(np.float32)
 
         # Stage 6: High-pass filter to remove CTCSS sub-tones.
         audio, self._hp_zi = lfilter(self._hp_filter, 1.0, audio, zi=self._hp_zi)

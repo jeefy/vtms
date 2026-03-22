@@ -344,6 +344,75 @@ class TestAudioRecorderMonitor:
         np.testing.assert_array_almost_equal(fed_audio, file_audio, decimal=5)
 
 
+class TestAudioRecorderDCSSquelch:
+    """Test DCS code integration with squelch gating."""
+
+    def test_accepts_dcs_decoder_param(self, tmp_path):
+        """AudioRecorder should accept a dcs_decoder parameter."""
+        from unittest.mock import MagicMock
+
+        decoder = MagicMock()
+        output = tmp_path / "test.wav"
+        recorder = AudioRecorder(
+            output, audio_format="wav", squelch_db=-20, dcs_decoder=decoder
+        )
+        assert recorder._dcs_decoder is decoder
+
+    def test_dcs_decoder_none_by_default(self, tmp_path):
+        output = tmp_path / "test.wav"
+        recorder = AudioRecorder(output, audio_format="wav")
+        assert recorder._dcs_decoder is None
+
+    def test_dcs_match_required_when_decoder_set(self, tmp_path):
+        """When DCS decoder is set, squelch should require DCS match too."""
+        from unittest.mock import MagicMock
+
+        decoder = MagicMock()
+        decoder.process.return_value = False  # DCS never matches
+        decoder.is_matched = False
+
+        output = tmp_path / "test.wav"
+        recorder = AudioRecorder(
+            output, audio_format="wav", squelch_db=-100, dcs_decoder=decoder
+        )
+
+        def gen_with_pre_hp():
+            for iq_power, audio in make_audio_generator(num_blocks=3):
+                # pre_hp_audio is the 3rd element of the tuple
+                yield (iq_power, audio, audio)  # pre_hp = same as audio for test
+
+        stats = recorder.record(gen_with_pre_hp())
+        # Nothing should be recorded because DCS never matched
+        assert stats["samples_written"] == 0
+
+    def test_records_when_dcs_matches(self, tmp_path):
+        """When DCS decoder matches, audio should be recorded."""
+        from unittest.mock import MagicMock
+
+        decoder = MagicMock()
+        decoder.process.return_value = True
+        decoder.is_matched = True
+
+        output = tmp_path / "test.wav"
+        recorder = AudioRecorder(
+            output, audio_format="wav", squelch_db=-100, dcs_decoder=decoder
+        )
+
+        def gen_with_pre_hp():
+            for iq_power, audio in make_audio_generator(num_blocks=3):
+                yield (iq_power, audio, audio)
+
+        stats = recorder.record(gen_with_pre_hp())
+        assert stats["samples_written"] > 0
+
+    def test_no_dcs_decoder_accepts_2tuple(self, tmp_path):
+        """Without DCS, recorder should still accept (power, audio) tuples."""
+        output = tmp_path / "test.wav"
+        recorder = AudioRecorder(output, audio_format="wav", squelch_db=-100)
+        stats = recorder.record(make_audio_generator(num_blocks=3))
+        assert stats["samples_written"] > 0
+
+
 class TestRecorderStoppedEvent:
     """Verify _stopped is a threading.Event for thread-safe shutdown signaling."""
 

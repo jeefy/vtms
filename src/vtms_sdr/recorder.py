@@ -9,7 +9,7 @@ import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING, Any, Generator
 
 import numpy as np
 import soundfile as sf
@@ -44,6 +44,7 @@ class AudioRecorder:
         squelch_db: float = -30.0,
         transcriber: Transcriber | None = None,
         audio_monitor: AudioMonitor | None = None,
+        dcs_decoder=None,
         squelch_callback: Callable[[bool, float], None] | None = None,
     ):
         """Initialize the audio recorder.
@@ -56,6 +57,8 @@ class AudioRecorder:
                         level is not recorded. Use -100 to disable.
             transcriber: Optional Transcriber for live speech-to-text.
             audio_monitor: Optional AudioMonitor for live audio playback.
+            dcs_decoder: Optional DCS decoder. When set, squelch requires
+                both power threshold AND DCS code match to open.
             squelch_callback: Optional callback receiving (is_open, power_db)
                 on each block for real-time squelch state reporting.
         """
@@ -65,6 +68,7 @@ class AudioRecorder:
         self.squelch_db = squelch_db
         self._transcriber = transcriber
         self._audio_monitor = audio_monitor
+        self._dcs_decoder = dcs_decoder
         self._squelch_callback = squelch_callback
 
         self._stopped = threading.Event()
@@ -144,7 +148,7 @@ class AudioRecorder:
 
     def record(
         self,
-        audio_generator: Generator[tuple[float, np.ndarray], None, None],
+        audio_generator: Generator[tuple[Any, ...], None, None],
         duration: float | None = None,
         progress_callback: Callable[[float, int, int], None] | None = None,
     ) -> dict:
@@ -172,7 +176,7 @@ class AudioRecorder:
 
     def _record_wav(
         self,
-        audio_generator: Generator[tuple[float, np.ndarray], None, None],
+        audio_generator: Generator[tuple[Any, ...], None, None],
         duration: float | None,
     ) -> dict:
         """Record audio directly to WAV file."""
@@ -188,9 +192,16 @@ class AudioRecorder:
             format="WAV",
             subtype="FLOAT",
         ) as wav_file:
-            for iq_power, audio_block in audio_generator:
+            for item in audio_generator:
                 if self._stopped.is_set():
                     break
+
+                # Unpack: support both (power, audio) and (power, audio, pre_hp_audio)
+                if len(item) == 3:
+                    iq_power, audio_block, pre_hp_audio = item
+                else:
+                    iq_power, audio_block = item
+                    pre_hp_audio = None
 
                 if duration is not None:
                     elapsed = time.time() - self._start_time
@@ -198,6 +209,13 @@ class AudioRecorder:
                         break
 
                 is_above = self._is_above_squelch(iq_power)
+
+                # If DCS decoder is active, require DCS match too
+                if self._dcs_decoder is not None and pre_hp_audio is not None:
+                    self._dcs_decoder.process(pre_hp_audio)
+                    if not self._dcs_decoder.is_matched:
+                        is_above = False
+
                 self._process_squelch_and_transcribe(audio_block, is_above)
 
                 if self._squelch_callback is not None:

@@ -103,6 +103,20 @@ def _validate_preset(name: str, settings: dict) -> None:
             f"Preset '{name}': label must be a string, got {type(label).__name__}"
         )
 
+    dcs_code = settings.get("dcs_code")
+    if dcs_code is not None:
+        if not isinstance(dcs_code, int):
+            raise ValueError(
+                f"Preset '{name}': dcs_code must be an integer, "
+                f"got {type(dcs_code).__name__}"
+            )
+        from .dcs import DCS_CODES
+
+        if dcs_code not in DCS_CODES:
+            raise ValueError(
+                f"Preset '{name}': dcs_code {dcs_code} is not a valid standard DCS code"
+            )
+
 
 def get_preset(presets: dict[str, dict], name: str) -> dict:
     """Retrieve a single preset by name.

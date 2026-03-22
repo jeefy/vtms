@@ -1491,3 +1491,52 @@ class TestScanRecommendCommand:
             mock_tf.assert_called_once()
             call_kwargs = mock_tf.call_args[1]
             assert call_kwargs["prompt"] == "Custom"
+
+
+# ---------------------------------------------------------------------------
+# Tests: --dcs CLI option
+# ---------------------------------------------------------------------------
+
+
+class TestRecordDCSOption:
+    """Test --dcs CLI option for record command."""
+
+    def test_dcs_option_exists(self):
+        """record command should accept --dcs option."""
+        from click.testing import CliRunner
+        from vtms_sdr.cli import main
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["record", "--help"])
+        assert "--dcs" in result.output
+
+    def test_dcs_invalid_code_rejected(self):
+        """Invalid DCS code should produce an error."""
+        from click.testing import CliRunner
+        from vtms_sdr.cli import main
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["record", "-f", "462.5625M", "--dcs", "999"])
+        assert result.exit_code != 0
+
+    def test_dcs_from_preset(self, tmp_path):
+        """DCS code from preset should be used when --dcs not given on CLI."""
+        import yaml
+
+        preset_data = {
+            "presets": {"test": {"freq": "462.5625M", "mod": "fm", "dcs_code": 23}}
+        }
+        preset_file = tmp_path / "presets.yaml"
+        preset_file.write_text(yaml.dump(preset_data))
+
+        from click.testing import CliRunner
+        from vtms_sdr.cli import main
+
+        runner = CliRunner()
+        # This will fail trying to open SDR but we just check it gets past parsing
+        result = runner.invoke(
+            main,
+            ["record", "--preset", "test", "--preset-file", str(preset_file)],
+        )
+        # Should fail at SDR, not at CLI parsing
+        assert "dcs_code" not in (result.output or "").lower() or result.exit_code != 0

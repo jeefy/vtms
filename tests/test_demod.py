@@ -607,3 +607,64 @@ class TestSSBAmplitudeStability:
             f"Quiet block should be significantly quieter: "
             f"quiet_rms={quiet_rms:.4f}, loud_rms={loud_rms:.4f}"
         )
+
+
+class TestFMDemodulatorPreHPTap:
+    """Test the pre-high-pass audio tap for DCS/CTCSS decoding."""
+
+    def test_pre_hp_audio_attribute_exists(self):
+        """FMDemodulator should have a pre_hp_audio attribute after demodulate."""
+        demod = FMDemodulator(SAMPLE_RATE)
+        iq = generate_fm_signal(tone_freq=1000.0)
+        demod.demodulate(iq)
+        assert hasattr(demod, "pre_hp_audio")
+
+    def test_pre_hp_audio_is_numpy_array(self):
+        demod = FMDemodulator(SAMPLE_RATE)
+        iq = generate_fm_signal(tone_freq=1000.0)
+        demod.demodulate(iq)
+        assert isinstance(demod.pre_hp_audio, np.ndarray)
+
+    def test_pre_hp_audio_has_same_length_as_output(self):
+        demod = FMDemodulator(SAMPLE_RATE)
+        iq = generate_fm_signal(tone_freq=1000.0)
+        audio = demod.demodulate(iq)
+        assert len(demod.pre_hp_audio) == len(audio)
+
+    def test_pre_hp_audio_contains_low_frequencies(self):
+        """Pre-HP audio should contain sub-300 Hz content."""
+        demod = FMDemodulator(SAMPLE_RATE)
+        # Generate FM signal with a 150 Hz tone (below HP cutoff)
+        iq = generate_fm_signal(tone_freq=150.0, deviation=5000.0)
+        audio = demod.demodulate(iq)
+
+        # The pre-HP audio should have more low-frequency energy
+        pre_hp_spectrum = np.abs(np.fft.rfft(demod.pre_hp_audio))
+        post_hp_spectrum = np.abs(np.fft.rfft(audio))
+
+        # Below 300 Hz bins
+        freq_bins = np.fft.rfftfreq(len(audio), d=1.0 / AUDIO_SAMPLE_RATE)
+        low_mask = freq_bins < 300
+        pre_hp_low_energy = np.sum(pre_hp_spectrum[low_mask] ** 2)
+        post_hp_low_energy = np.sum(post_hp_spectrum[low_mask] ** 2)
+
+        assert pre_hp_low_energy > post_hp_low_energy * 2, (
+            "Pre-HP audio should have significantly more sub-300 Hz energy"
+        )
+
+    def test_output_audio_unchanged(self):
+        """Adding the tap should not change the demodulate() output."""
+        demod = FMDemodulator(SAMPLE_RATE)
+        iq = generate_fm_signal(tone_freq=1000.0, deviation=5000.0)
+        audio = demod.demodulate(iq)
+
+        # Output should still be float32, in [-1, 1], with 1kHz dominant
+        assert audio.dtype == np.float32
+        assert np.max(np.abs(audio)) <= 1.0
+        dominant = get_dominant_frequency(audio)
+        assert abs(dominant - 1000.0) < 150.0
+
+    def test_pre_hp_audio_none_before_first_call(self):
+        """pre_hp_audio should be None before first demodulate() call."""
+        demod = FMDemodulator(SAMPLE_RATE)
+        assert demod.pre_hp_audio is None

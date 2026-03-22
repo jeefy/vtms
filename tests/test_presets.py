@@ -276,3 +276,48 @@ class TestFindPresetFile:
         result = find_preset_file(search_dir=tmp_path)
 
         assert result.name == "presets.yaml"
+
+
+# ---------------------------------------------------------------------------
+# Tests: dcs_code preset field
+# ---------------------------------------------------------------------------
+
+
+class TestPresetDCSCode:
+    """Test dcs_code field in presets."""
+
+    def test_valid_dcs_code_accepted(self, tmp_path):
+        from vtms_sdr.presets import load_presets
+
+        data = {"presets": {"ok": {"freq": "462.5625M", "dcs_code": 23}}}
+        p = tmp_path / "presets.yaml"
+        p.write_text(yaml.dump(data))
+        result = load_presets(p)
+        assert result["ok"]["dcs_code"] == 23
+
+    def test_invalid_dcs_code_raises(self, tmp_path):
+        from vtms_sdr.presets import load_presets
+
+        data = {"presets": {"bad": {"freq": "462.5625M", "dcs_code": 999}}}
+        p = tmp_path / "presets.yaml"
+        p.write_text(yaml.dump(data))
+        with pytest.raises(ValueError, match="dcs_code"):
+            load_presets(p)
+
+    def test_dcs_code_must_be_int(self, tmp_path):
+        from vtms_sdr.presets import load_presets
+
+        data = {"presets": {"bad": {"freq": "462.5625M", "dcs_code": "abc"}}}
+        p = tmp_path / "presets.yaml"
+        p.write_text(yaml.dump(data))
+        with pytest.raises(ValueError, match="dcs_code"):
+            load_presets(p)
+
+    def test_preset_without_dcs_code_still_works(self, tmp_path):
+        from vtms_sdr.presets import load_presets
+
+        data = {"presets": {"ok": {"freq": "146.52M"}}}
+        p = tmp_path / "presets.yaml"
+        p.write_text(yaml.dump(data))
+        result = load_presets(p)
+        assert "dcs_code" not in result["ok"]

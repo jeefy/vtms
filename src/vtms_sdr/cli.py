@@ -193,6 +193,13 @@ def main(ctx, verbose):
     default=None,
     help="Custom initial prompt for Whisper (overrides default motorsport prompt). Requires --transcribe.",
 )
+@click.option(
+    "--dcs",
+    "dcs_code",
+    type=int,
+    default=None,
+    help="DCS code for squelch gating (e.g. 23, 71, 155). Only opens squelch when this code matches.",
+)
 def record(
     freq,
     mod,
@@ -213,6 +220,7 @@ def record(
     volume,
     language,
     prompt,
+    dcs_code,
 ):
     """Record audio from a frequency.
 
@@ -267,6 +275,8 @@ def record(
             label = preset.get("label")
         if ppm is None and "ppm" in preset:
             ppm = int(preset["ppm"])
+        if dcs_code is None and "dcs_code" in preset:
+            dcs_code = int(preset["dcs_code"])
 
     # Apply defaults for values still unset
     if mod is None:
@@ -277,6 +287,14 @@ def record(
         squelch = -30.0
     if ppm is None:
         ppm = 0
+
+    # Validate DCS code if provided
+    if dcs_code is not None:
+        from .dcs import DCS_CODES
+
+        if dcs_code not in DCS_CODES:
+            click.echo(f"Error: Invalid DCS code {dcs_code}.", err=True)
+            sys.exit(1)
 
     # Freq is required (either from CLI or preset)
     if freq is None:
@@ -360,6 +378,8 @@ def record(
     click.echo(f"Squelch:    {squelch:.0f} dB", err=True)
     if ppm:
         click.echo(f"PPM:        {ppm}", err=True)
+    if dcs_code:
+        click.echo(f"DCS Code:   {dcs_code}", err=True)
     click.echo(f"Output:     {output_path}", err=True)
     click.echo(f"Format:     {audio_format.upper()}", err=True)
     if transcriber_instance:
@@ -391,6 +411,7 @@ def record(
             monitor=audio_monitor_instance,
             volume=volume,
             label=label,
+            dcs_code=dcs_code,
         )
         stats = RecordingSession(config).run()
 
