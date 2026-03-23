@@ -1,10 +1,11 @@
 """Configuration for ESP32 analog temperature sensor."""
 
-# WiFi networks (tried in order)
-WIFI_NETWORKS = [
-    ("vtms", ""),  # car-pi hotspot (OTA updates) -- set password
-    ("The Grid", "REDACTED_WIFI_PASSWORD"),
-]
+# WiFi networks — loaded from generated secrets module (see .env)
+try:
+    from secrets import WIFI_NETWORKS
+except ImportError:
+    print("ERROR: secrets.py missing — run 'make generate-secrets'")
+    WIFI_NETWORKS = []
 
 WIFI_CONNECT_TIMEOUT = 15
 

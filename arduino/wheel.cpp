@@ -27,9 +27,11 @@
 // MAX6675 thermocouple support
 #include "max6675.h"
 
-// --- Edit these to match your WiFi / MQTT broker ---
-const char *ssid = "The Grid"; // Enter your Wi-Fi name
-const char *password = "REDACTED_WIFI_PASSWORD";  // Enter Wi-Fi password
+// --- WiFi credentials ---
+// Legacy sketch — load from arduino_secrets.h (see .env + Makefile)
+#include "arduino_secrets.h"
+const char *ssid = SECRET_WIFI_SSID;
+const char *password = SECRET_WIFI_PASS;
 
 // MQTT Broker
 const char *mqtt_broker = "192.168.50.24";

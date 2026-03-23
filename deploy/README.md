@@ -141,8 +141,8 @@ Watchtower on each Pi polls the registry every 120 seconds and pulls updated ima
 
 | Variable | Value | Description |
 |----------|-------|-------------|
-| `hotspot_ssid` | `vtms` | WiFi hotspot SSID |
-| `hotspot_password` | `REDACTED_HOTSPOT_PASSWORD` | Hotspot WPA password |
+| `hotspot_ssid` | `{{ lookup('env', 'HOTSPOT_SSID') }}` | WiFi hotspot SSID (from `.env`) |
+| `hotspot_password` | `{{ lookup('env', 'HOTSPOT_PASSWORD') }}` | Hotspot WPA password (from `.env`) |
 | `hotspot_band` | `bg` | WiFi band (2.4 GHz) |
 | `hotspot_channel` | `6` | WiFi channel |
 | `hotspot_subnet` | `10.42.0.0/24` | Hotspot client subnet |

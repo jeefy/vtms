@@ -128,37 +128,53 @@ flash-micropython:
 	@echo "3. esptool.py --chip esp32 erase_flash"
 	@echo "4. esptool.py --chip esp32 write_flash -z 0x1000 <firmware.bin>"
 
-flash-analog-sensors:
+generate-secrets: .env ## Generate secrets files for Arduino/MicroPython from .env
+	@echo "Generating arduino/common/secrets.py from .env …"
+	@. ./.env && printf '"""WiFi credentials — generated from .env, do NOT commit."""\n\nWIFI_NETWORKS = [\n    ("%s", "%s"),\n    ("%s", "%s"),\n]\n' \
+		"$$WIFI_SSID_1" "$$WIFI_PASSWORD_1" \
+		"$$WIFI_SSID_2" "$$WIFI_PASSWORD_2" \
+		> arduino/common/secrets.py
+	@echo "Generating arduino/arduino_secrets.h from .env …"
+	@. ./.env && printf '#ifndef ARDUINO_SECRETS_H\n#define ARDUINO_SECRETS_H\n#define SECRET_WIFI_SSID "%s"\n#define SECRET_WIFI_PASS "%s"\n#endif\n' \
+		"$$WIFI_SSID_2" "$$WIFI_PASSWORD_2" \
+		> arduino/arduino_secrets.h
+	@echo "Done.  Files are gitignored — do not commit them."
+
+flash-analog-sensors: generate-secrets
 	mpremote cp arduino/common/boot.py :boot.py
 	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
 	mpremote cp arduino/common/ota_update.py :ota_update.py
+	mpremote cp arduino/common/secrets.py :secrets.py
 	mpremote cp arduino/analog_sensors/config.py :config.py
 	mpremote cp arduino/analog_sensors/sensors.py :sensors.py
 	mpremote cp arduino/analog_sensors/main.py :main.py
 	mpremote reset
 
-flash-thermoprobe:
+flash-thermoprobe: generate-secrets
 	mpremote cp arduino/common/boot.py :boot.py
 	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
 	mpremote cp arduino/common/ota_update.py :ota_update.py
+	mpremote cp arduino/common/secrets.py :secrets.py
 	mpremote cp arduino/thermoprobe/config.py :config.py
 	mpremote cp arduino/thermoprobe/max6675.py :max6675.py
 	mpremote cp arduino/thermoprobe/main.py :main.py
 	mpremote reset
 
-flash-temp-sensor:
+flash-temp-sensor: generate-secrets
 	mpremote cp arduino/common/boot.py :boot.py
 	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
 	mpremote cp arduino/common/ota_update.py :ota_update.py
+	mpremote cp arduino/common/secrets.py :secrets.py
 	mpremote cp arduino/temp_sensor/config.py :config.py
 	mpremote cp arduino/temp_sensor/sensors.py :sensors.py
 	mpremote cp arduino/temp_sensor/main.py :main.py
 	mpremote reset
 
-flash-led-controller:
+flash-led-controller: generate-secrets
 	mpremote cp arduino/common/boot.py :boot.py
 	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
 	mpremote cp arduino/common/ota_update.py :ota_update.py
+	mpremote cp arduino/common/secrets.py :secrets.py
 	mpremote cp arduino/led_controller/config.py :config.py
 	mpremote cp arduino/led_controller/led_logic.py :led_logic.py
 	mpremote cp arduino/led_controller/main.py :main.py

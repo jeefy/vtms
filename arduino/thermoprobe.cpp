@@ -1,11 +1,10 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include "max6675.h"
-// WiFi
-//const char *ssid = "vtms"; // Enter your Wi-Fi name
-//const char *password = "REDACTED_HOTSPOT_PASSWORD";  // Enter Wi-Fi password
-const char *ssid = "The Grid"; // Enter your Wi-Fi name
-const char *password = "REDACTED_WIFI_PASSWORD";  // Enter Wi-Fi password
+// WiFi credentials — load from arduino_secrets.h (see .env + Makefile)
+#include "arduino_secrets.h"
+const char *ssid = SECRET_WIFI_SSID;
+const char *password = SECRET_WIFI_PASS;
 
 // MQTT Broker
 const char *mqtt_broker = "192.168.50.24";

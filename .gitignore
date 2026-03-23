@@ -211,3 +211,7 @@ web/playwright-report/
 
 # Worktrees
 .worktrees/
+
+# Generated secrets (from .env)
+arduino/common/secrets.py
+arduino/arduino_secrets.h
