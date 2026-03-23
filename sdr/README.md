@@ -4,6 +4,8 @@ RTL-SDR audio recorder, frequency scanner, and live monitor for VHF/UHF radio co
 
 `vtms-sdr` turns a cheap RTL-SDR USB dongle into a command-line radio tool. Record audio from any frequency in the 24 MHz -- 1.766 GHz range with FM, AM, or SSB demodulation, scan bands for active or unused channels, transcribe voice communications in real time with Whisper AI, and monitor audio live through your speakers with a terminal UI.
 
+Part of the [VTMS monorepo](../README.md). Can also be used standalone.
+
 ## Requirements
 
 ### System dependencies
@@ -21,26 +23,22 @@ Python 3.10 or newer.
 ## Installation
 
 ```bash
-# Clone and install
-git clone https://github.com/jeefy/vtms-sdr.git
-cd vtms-sdr
+# From the repo root
+make sdr-install
 
-# Create a virtual environment (recommended)
-python3 -m venv .venv
-source .venv/bin/activate
+# Or directly from sdr/
+cd sdr
+uv sync
 
-# Install core package
-pip install -e .
-
-# Install with live transcription support
-pip install -e ".[transcribe]"
-
-# Install with live audio monitoring
-pip install -e ".[monitor]"
-
-# Install everything (transcription + monitoring + dev tools)
-pip install -e ".[transcribe,monitor,dev]"
+# With optional extras
+uv sync --extra transcribe --extra monitor --extra dev
 ```
+
+Optional extras:
+
+- `transcribe` -- live speech-to-text with Whisper AI
+- `monitor` -- live audio playback and terminal UI
+- `dev` -- test and lint tools (pytest, ruff)
 
 ## Quick start
 
@@ -274,17 +272,14 @@ RTL-SDR dongle
 ## Development
 
 ```bash
-# Install with dev dependencies
-pip install -e ".[dev,transcribe,monitor]"
+# Install with all extras
+make sdr-install
 
-# Run the test suite
-pytest
+# Run tests
+make sdr-test
 
-# Run with coverage
-pytest --cov
-
-# Lint (if ruff is installed)
-ruff check src/ tests/
+# Lint
+make sdr-lint
 ```
 
 Tests are fully mocked and do not require an RTL-SDR dongle.

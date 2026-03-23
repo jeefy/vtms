@@ -23,43 +23,47 @@ This directory contains comprehensive tests for the Vehicle Telemetry Management
 
 Install development dependencies:
 ```bash
-pip install -r requirements-dev.txt
+make client-install
+```
+or equivalently, from the `client/` directory:
+```bash
+uv sync
 ```
 
 ### Running All Tests
 
-Using the test runner:
+From the repository root:
 ```bash
-python run_tests.py
+make client-test
 ```
 
-Using pytest directly:
+From the `client/` directory:
 ```bash
-pytest tests/ -v
+uv run pytest tests/ -v
 ```
 
 ### Running Specific Test Files
 
 ```bash
-pytest tests/test_client.py -v
-pytest tests/test_config.py -v
-pytest tests/test_mqtt_handlers.py -v
-pytest tests/test_myobd.py -v
-pytest tests/test_integration.py -v
+uv run pytest tests/test_client.py -v
+uv run pytest tests/test_config.py -v
+uv run pytest tests/test_mqtt_handlers.py -v
+uv run pytest tests/test_myobd.py -v
+uv run pytest tests/test_integration.py -v
 ```
 
 ### Running Specific Test Classes or Methods
 
 ```bash
-pytest tests/test_client.py::TestVTMSClient::test_init_not_raspberry_pi -v
-pytest tests/test_integration.py::TestVTMSIntegration -v
+uv run pytest tests/test_client.py::TestVTMSClient::test_init_not_raspberry_pi -v
+uv run pytest tests/test_integration.py::TestVTMSIntegration -v
 ```
 
 ## Test Coverage
 
 To run tests with coverage:
 ```bash
-pytest tests/ --cov=src --cov=client --cov-report=html
+uv run pytest tests/ --cov --cov-report=html
 ```
 
 This will generate an HTML coverage report in `htmlcov/index.html`.
@@ -138,17 +142,17 @@ Test system performance:
 
 To run tests with more verbose output:
 ```bash
-pytest tests/ -v -s
+uv run pytest tests/ -v -s
 ```
 
 To run tests and stop on first failure:
 ```bash
-pytest tests/ -x
+uv run pytest tests/ -x
 ```
 
 To run tests with pdb debugging:
 ```bash
-pytest tests/ --pdb
+uv run pytest tests/ --pdb
 ```
 
 ## Continuous Integration

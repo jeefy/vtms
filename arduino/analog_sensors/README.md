@@ -38,10 +38,11 @@ connecting. Expected 0-5V range; module output 0-1V (safe for ESP32 3.3V ADC).
 |------|---------|
 | `config.py` | WiFi, MQTT, ADC pins, calibration values |
 | `sensors.py` | Pure-math conversion functions (ADC->voltage->value) |
-| `mqtt_client.py` | MQTT wrapper using `umqtt.robust` |
-| `boot.py` | Multi-network WiFi connection on startup |
 | `main.py` | Main loop: read, smooth, convert, publish |
 | `tests/test_sensors.py` | Host-side pytest tests for sensor math |
+| `../common/boot.py` | WiFi connection and OTA update check on startup |
+| `../common/mqtt_client.py` | MQTT wrapper using `umqtt.robust` |
+| `../common/ota_update.py` | Over-the-air firmware update client |
 
 ## Setup
 
@@ -68,7 +69,7 @@ make flash-analog-sensors
 ### 4. Monitor serial output
 
 ```bash
-make monitor-analog
+make monitor-esp32
 ```
 
 ## Testing
@@ -78,6 +79,24 @@ Run sensor conversion tests on the host:
 ```bash
 make esp32-test
 ```
+
+## OTA Updates
+
+At boot, the device connects to WiFi and checks for firmware updates from the
+OTA server running as a Docker container on the car-pi. `boot.py` handles WiFi
+connection and the OTA check before `main.py` runs.
+
+Marker files on the device filesystem:
+
+| File | Purpose |
+|------|---------|
+| `_ota_hash` | Hash of the currently installed firmware |
+| `_boot_count` | Incremented each boot; used to detect crash loops |
+| `_ota_skip` | Hash of a previously failed update, skipped on next check |
+
+If the OTA server provides a newer firmware hash, the device downloads and
+applies the update, then reboots. If an update causes repeated crashes, the
+boot count mechanism prevents infinite update loops.
 
 ## Calibration
 
