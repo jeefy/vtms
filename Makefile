@@ -96,5 +96,28 @@ ci-sdr: sdr-lint sdr-test
 ci-node: server-build web-build
 ci: ci-client ci-sdr ci-node
 
-test: client-test sdr-test
+test: client-test sdr-test esp32-test
 lint: client-lint sdr-lint
+
+# ── ESP32 Analog Sensors (MicroPython) ─────────────────
+.PHONY: esp32-test flash-micropython flash-analog-sensors monitor-analog
+
+esp32-test:
+	cd arduino/analog_sensors && python -m pytest tests/ -v
+
+flash-micropython:
+	@echo "1. Download firmware from https://micropython.org/download/ESP32_GENERIC/"
+	@echo "2. pip install esptool mpremote"
+	@echo "3. esptool.py --chip esp32 erase_flash"
+	@echo "4. esptool.py --chip esp32 write_flash -z 0x1000 <firmware.bin>"
+
+flash-analog-sensors:
+	mpremote cp arduino/analog_sensors/config.py :config.py
+	mpremote cp arduino/analog_sensors/sensors.py :sensors.py
+	mpremote cp arduino/analog_sensors/mqtt_client.py :mqtt_client.py
+	mpremote cp arduino/analog_sensors/boot.py :boot.py
+	mpremote cp arduino/analog_sensors/main.py :main.py
+	mpremote reset
+
+monitor-analog:
+	mpremote connect auto repl
