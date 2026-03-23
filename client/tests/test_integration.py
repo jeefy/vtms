@@ -7,11 +7,8 @@ pieces compose correctly at a higher level than the individual module
 tests.
 """
 
-import asyncio
 import time
-from unittest.mock import Mock, patch, MagicMock
-
-import pytest
+from unittest.mock import Mock, patch
 
 from vtms_client import VTMSClient
 from vtms_client.config import Config

@@ -4,7 +4,7 @@ Unit tests for MQTTTransport
 
 import time
 from collections import deque
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 

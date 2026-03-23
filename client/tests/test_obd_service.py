@@ -2,15 +2,9 @@
 Unit tests for OBDService
 """
 
-from functools import partial
-from unittest.mock import MagicMock, patch, call
-
-import pytest
-import obd
-from obd import OBDStatus
+from unittest.mock import MagicMock, patch
 
 from vtms_client.obd_service import OBDService
-from tests.conftest import MockOBDAsync
 
 
 class TestOBDServiceInit:

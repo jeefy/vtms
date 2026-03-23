@@ -11,8 +11,8 @@ def pytest_configure(config):
     os.environ.setdefault("POSTGRES_PASSWORD", "test_pass")
 
 
-from unittest.mock import Mock, patch
-from obd import OBDStatus
+from unittest.mock import Mock, patch  # noqa: E402
+from obd import OBDStatus  # noqa: E402
 
 
 class MockOBDResponse:

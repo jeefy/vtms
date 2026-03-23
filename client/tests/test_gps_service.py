@@ -4,8 +4,6 @@ Unit tests for GPSService
 
 from unittest.mock import MagicMock, patch, PropertyMock
 
-import pytest
-
 from vtms_client.gps_service import GPSService
 
 

@@ -5,8 +5,7 @@ The heavy lifting (MQTT, GPS, OBD) is now tested in the individual
 service-module test files. These tests verify the thin wiring layer.
 """
 
-import asyncio
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from vtms_client.config import Config
 
