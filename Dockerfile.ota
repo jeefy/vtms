@@ -1,0 +1,24 @@
+FROM python:3.13-slim
+
+RUN pip install --no-cache-dir paho-mqtt>=2.0
+
+WORKDIR /app
+COPY ota/server.py .
+
+# Copy common firmware files
+COPY arduino/common/*.py /firmware/common/
+
+# Copy device-specific firmware files (only .py, no tests/)
+COPY arduino/analog_sensors/config.py arduino/analog_sensors/sensors.py arduino/analog_sensors/main.py /firmware/analog_sensors/
+COPY arduino/thermoprobe/config.py arduino/thermoprobe/max6675.py arduino/thermoprobe/main.py /firmware/thermoprobe/
+COPY arduino/temp_sensor/config.py arduino/temp_sensor/sensors.py arduino/temp_sensor/main.py /firmware/temp_sensor/
+COPY arduino/led_controller/config.py arduino/led_controller/led_logic.py arduino/led_controller/main.py /firmware/led_controller/
+
+ENV FIRMWARE_DIR=/firmware
+ENV HTTP_PORT=8266
+ENV MQTT_BROKER=192.168.50.24
+ENV MQTT_PORT=1883
+
+EXPOSE 8266
+
+CMD ["python", "server.py"]

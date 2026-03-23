@@ -2,8 +2,8 @@
 
 # WiFi networks (tried in order)
 WIFI_NETWORKS = [
+    ("vtms", ""),  # car-pi hotspot (OTA updates) -- set password
     ("The Grid", "REDACTED_WIFI_PASSWORD"),
-    # Add mobile hotspot SSID/password here
 ]
 
 WIFI_CONNECT_TIMEOUT = 15  # seconds per SSID attempt
@@ -43,3 +43,7 @@ POLL_INTERVAL = 2  # seconds between sensor reads
 
 # Debug mode (publishes raw voltages for calibration)
 DEBUG = True
+
+# OTA
+DEVICE_TYPE = "analog_sensors"
+OTA_SERVER = "10.42.0.1:8266"

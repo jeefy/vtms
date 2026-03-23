@@ -24,6 +24,7 @@ from config import (
     OIL_MAX_PSI,
     POLL_INTERVAL,
     EMA_ALPHA,
+    MQTT_TOPIC_PREFIX,
     DEBUG,
 )
 from sensors import (
@@ -44,9 +45,16 @@ def setup_adc(pin_num):
     return adc
 
 
+def _topic(name):
+    """Build full MQTT topic from prefix and name."""
+    return "{}/{}".format(MQTT_TOPIC_PREFIX, name)
+
+
 def main():
     """Main sensor loop."""
     print("Analog sensors: starting")
+
+    boot_count_reset = False
 
     # Set up ADC channels
     fuel_adc = setup_adc(FUEL_ADC_PIN)
@@ -91,10 +99,10 @@ def main():
             # Publish debug voltages for calibration
             if DEBUG:
                 mqtt_client.publish(
-                    mqtt, "raw/a0_voltage", "{:.4f}".format(fuel_voltage)
+                    mqtt, _topic("raw/a0_voltage"), "{:.4f}".format(fuel_voltage)
                 )
                 mqtt_client.publish(
-                    mqtt, "raw/a1_voltage", "{:.4f}".format(oil_voltage)
+                    mqtt, _topic("raw/a1_voltage"), "{:.4f}".format(oil_voltage)
                 )
 
             # Smooth voltages
@@ -103,13 +111,19 @@ def main():
 
             # Convert and publish fuel level
             fuel_level = voltage_to_fuel_level(fuel_smoothed, FUEL_V_FULL, FUEL_V_EMPTY)
-            mqtt_client.publish(mqtt, "fuel_level", "{:.1f}".format(fuel_level))
+            mqtt_client.publish(mqtt, _topic("fuel_level"), "{:.1f}".format(fuel_level))
 
             # Convert and publish oil pressure
             oil_psi = voltage_to_oil_pressure(
                 oil_smoothed, OIL_V_0PSI, OIL_V_MAX, OIL_MAX_PSI
             )
-            mqtt_client.publish(mqtt, "oil_pressure", "{:.1f}".format(oil_psi))
+            mqtt_client.publish(mqtt, _topic("oil_pressure"), "{:.1f}".format(oil_psi))
+
+            if not boot_count_reset:
+                from ota_update import reset_boot_count
+
+                reset_boot_count()
+                boot_count_reset = True
 
         except OSError as e:
             print("Error:", e)

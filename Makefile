@@ -85,7 +85,13 @@ image-web:
 image-web-push: image-web
 	skopeo copy --dest-tls-verify=false docker-daemon:$(REGISTRY)/vtms-web:latest docker://$(REGISTRY)/vtms-web:latest
 
-deploy-push: image-client-push image-sdr-push image-web-push
+image-ota:
+	docker buildx build --network=host --platform linux/arm64 -f Dockerfile.ota -t $(REGISTRY)/vtms-ota:latest --load .
+
+image-ota-push: image-ota
+	skopeo copy --dest-tls-verify=false docker-daemon:$(REGISTRY)/vtms-ota:latest docker://$(REGISTRY)/vtms-ota:latest
+
+deploy-push: image-client-push image-sdr-push image-web-push image-ota-push
 	@echo "All images pushed to $(REGISTRY)"
 
 # ── CI helpers ─────────────────────────────────────────
@@ -96,14 +102,25 @@ ci-sdr: sdr-lint sdr-test
 ci-node: server-build web-build
 ci: ci-client ci-sdr ci-node
 
-test: client-test sdr-test esp32-test
+test: client-test sdr-test esp32-test ota-test
 lint: client-lint sdr-lint
 
-# ── ESP32 Analog Sensors (MicroPython) ─────────────────
-.PHONY: esp32-test flash-micropython flash-analog-sensors monitor-analog
+# ── ESP32 MicroPython Devices ──────────────────────────
+.PHONY: esp32-test flash-micropython monitor-esp32
+.PHONY: flash-analog-sensors flash-thermoprobe flash-temp-sensor flash-led-controller
+
+# ── OTA Server ─────────────────────────────────────────
+.PHONY: ota-test
+
+ota-test:
+	cd ota && python -m pytest tests/ -v
 
 esp32-test:
+	cd arduino/common && python -m pytest tests/ -v
 	cd arduino/analog_sensors && python -m pytest tests/ -v
+	cd arduino/thermoprobe && python -m pytest tests/ -v
+	cd arduino/temp_sensor && python -m pytest tests/ -v
+	cd arduino/led_controller && python -m pytest tests/ -v
 
 flash-micropython:
 	@echo "1. Download firmware from https://micropython.org/download/ESP32_GENERIC/"
@@ -112,12 +129,40 @@ flash-micropython:
 	@echo "4. esptool.py --chip esp32 write_flash -z 0x1000 <firmware.bin>"
 
 flash-analog-sensors:
+	mpremote cp arduino/common/boot.py :boot.py
+	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
+	mpremote cp arduino/common/ota_update.py :ota_update.py
 	mpremote cp arduino/analog_sensors/config.py :config.py
 	mpremote cp arduino/analog_sensors/sensors.py :sensors.py
-	mpremote cp arduino/analog_sensors/mqtt_client.py :mqtt_client.py
-	mpremote cp arduino/analog_sensors/boot.py :boot.py
 	mpremote cp arduino/analog_sensors/main.py :main.py
 	mpremote reset
 
-monitor-analog:
+flash-thermoprobe:
+	mpremote cp arduino/common/boot.py :boot.py
+	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
+	mpremote cp arduino/common/ota_update.py :ota_update.py
+	mpremote cp arduino/thermoprobe/config.py :config.py
+	mpremote cp arduino/thermoprobe/max6675.py :max6675.py
+	mpremote cp arduino/thermoprobe/main.py :main.py
+	mpremote reset
+
+flash-temp-sensor:
+	mpremote cp arduino/common/boot.py :boot.py
+	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
+	mpremote cp arduino/common/ota_update.py :ota_update.py
+	mpremote cp arduino/temp_sensor/config.py :config.py
+	mpremote cp arduino/temp_sensor/sensors.py :sensors.py
+	mpremote cp arduino/temp_sensor/main.py :main.py
+	mpremote reset
+
+flash-led-controller:
+	mpremote cp arduino/common/boot.py :boot.py
+	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
+	mpremote cp arduino/common/ota_update.py :ota_update.py
+	mpremote cp arduino/led_controller/config.py :config.py
+	mpremote cp arduino/led_controller/led_logic.py :led_logic.py
+	mpremote cp arduino/led_controller/main.py :main.py
+	mpremote reset
+
+monitor-esp32:
 	mpremote connect auto repl

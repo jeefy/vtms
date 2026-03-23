@@ -1,6 +1,7 @@
-"""MQTT client wrapper for ESP32 analog sensors.
+"""MQTT client wrapper for ESP32 MicroPython devices.
 
-Thin wrapper around umqtt.robust with topic prefix management.
+Thin wrapper around umqtt.robust with topic management.
+Shared across all MicroPython ESP32 devices.
 """
 
 try:
@@ -8,7 +9,7 @@ try:
 except ImportError:
     MQTTClient = None
 
-from config import MQTT_BROKER, MQTT_PORT, MQTT_CLIENT_PREFIX, MQTT_TOPIC_PREFIX
+from config import MQTT_BROKER, MQTT_PORT, MQTT_CLIENT_PREFIX
 
 
 def _client_id():
@@ -32,11 +33,21 @@ def connect():
     return client
 
 
-def publish(client, subtopic, value):
-    """Publish a value to a subtopic under the configured prefix.
+def publish(client, topic, value):
+    """Publish a value to an MQTT topic.
 
-    Full topic: lemons/analog/<subtopic>
+    topic: full topic string (e.g. "lemons/temp/oil_F")
+    value: will be converted to string
     """
-    topic = "{}/{}".format(MQTT_TOPIC_PREFIX, subtopic)
     msg = str(value)
     client.publish(topic.encode(), msg.encode())
+
+
+def subscribe(client, topic, callback):
+    """Subscribe to an MQTT topic with a message callback.
+
+    callback signature: callback(topic_bytes, msg_bytes)
+    """
+    client.set_callback(callback)
+    client.subscribe(topic.encode())
+    print("MQTT: subscribed to", topic)
