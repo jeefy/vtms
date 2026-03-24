@@ -31,8 +31,13 @@ export class StreamManager {
     this.running = true;
     this.backoffMs = 1000;
 
-    await this.requestGoProStream();
-    this.spawnFfmpeg();
+    try {
+      await this.requestGoProStream();
+      this.spawnFfmpeg();
+    } catch (err) {
+      this.running = false;
+      throw err;
+    }
   }
 
   /** Stop streaming: kill FFmpeg, clear timers. */
@@ -41,8 +46,15 @@ export class StreamManager {
     this.clearReconnect();
 
     if (this.ffmpeg) {
-      this.ffmpeg.kill("SIGTERM");
+      const proc = this.ffmpeg;
       this.ffmpeg = null;
+      proc.kill("SIGTERM");
+      setTimeout(() => {
+        if (!proc.killed) {
+          console.warn("[stream] FFmpeg did not exit, sending SIGKILL");
+          proc.kill("SIGKILL");
+        }
+      }, 5000);
     }
   }
 
@@ -130,10 +142,14 @@ export class StreamManager {
     this.clearReconnect();
     console.log(`Reconnecting FFmpeg in ${this.backoffMs}ms...`);
     this.reconnectTimer = setTimeout(async () => {
-      await this.requestGoProStream();
-      this.spawnFfmpeg();
-      // Exponential backoff capped at 30 s
-      this.backoffMs = Math.min(this.backoffMs * 2, 30_000);
+      try {
+        await this.requestGoProStream();
+        this.spawnFfmpeg();
+        this.backoffMs = Math.min(this.backoffMs * 2, 30_000);
+      } catch (err) {
+        console.error("[stream] Reconnect failed:", err);
+        if (this.running) this.scheduleReconnect();
+      }
     }, this.backoffMs);
   }
 

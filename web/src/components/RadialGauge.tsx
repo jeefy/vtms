@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import type { GaugeZone } from "../types/telemetry";
 import type { GaugeConfigEntry } from "../types/config";
 
@@ -26,7 +26,8 @@ function polarToCartesian(angle: number, r: number): [number, number] {
 }
 
 function valueToAngle(value: number, min: number, max: number): number {
-  const ratio = Math.max(0, Math.min(1, (value - min) / (max - min)));
+  const range = max - min;
+  const ratio = range === 0 ? 0 : Math.max(0, Math.min(1, (value - min) / range));
   return ARC_START - ratio * ARC_SWEEP;
 }
 
@@ -59,7 +60,7 @@ function ZoneArc({ zone, min, max }: { zone: GaugeZone; min: number; max: number
   );
 }
 
-export function RadialGauge({ config, value }: RadialGaugeProps) {
+function RadialGauge({ config, value }: RadialGaugeProps) {
   const { min, max, label, unit, zones, decimals = 0 } = config;
   const clampedValue = Math.max(min, Math.min(max, isNaN(value) ? min : value));
   const needleAngle = valueToAngle(clampedValue, min, max);
@@ -186,3 +187,13 @@ export function RadialGauge({ config, value }: RadialGaugeProps) {
     </div>
   );
 }
+
+export default React.memo(RadialGauge, (prev, next) => {
+  return (
+    prev.value === next.value &&
+    prev.config.min === next.config.min &&
+    prev.config.max === next.config.max &&
+    prev.config.label === next.config.label &&
+    prev.config.unit === next.config.unit
+  );
+});

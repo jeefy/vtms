@@ -58,7 +58,11 @@ export function useConfig() {
       const res = await fetch(`${CONFIG_API}/api/config/defaults`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const defaults: AppConfig = await res.json();
-      return saveConfig(defaults);
+      const result = await saveConfig(defaults);
+      if (result.ok) {
+        return { ok: true as const, config: defaults };
+      }
+      return result;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);

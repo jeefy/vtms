@@ -13,10 +13,12 @@ from typing import TYPE_CHECKING
 from .utils import format_frequency, iq_power_db
 
 if TYPE_CHECKING:
+    from .audio_ws import AudioWSServer
     from .demod import Demodulator
     from .monitor import AudioMonitor, MonitorUI
     from .recorder import AudioRecorder
     from .sdr import SDRDevice
+    from .state import StateManager
     from .transcriber import Transcriber
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,8 @@ class RecordConfig:
     volume: float = 0.5
     label: str | None = None
     dcs_code: int | None = None
+    state_manager: StateManager | None = None
+    audio_ws: AudioWSServer | None = None
 
 
 class RecordingSession:
@@ -68,9 +72,18 @@ class RecordingSession:
         from .sdr import SDRDevice
 
         cfg = self.config
+        sm = cfg.state_manager
         try:
             with SDRDevice(device_index=cfg.device) as sdr:
                 sdr.configure(center_freq=cfg.freq, gain=cfg.gain, ppm=cfg.ppm)
+
+                # Publish initial state through StateManager
+                if sm is not None:
+                    sm.update("freq", cfg.freq)
+                    sm.update("mod", cfg.mod)
+                    sm.update("gain", cfg.gain)
+                    sm.update("squelch_db", cfg.squelch_db)
+                    sm.update("status", "recording")
 
                 demod = Demodulator.create(cfg.mod, sample_rate=sdr.sample_rate)
                 # Mutable holder so auto-tune can swap the demodulator
@@ -85,7 +98,13 @@ class RecordingSession:
                 def audio_stream():
                     for iq_block in sdr.stream():
                         iq_pwr = iq_power_db(iq_block)
+                        # Publish signal power to StateManager
+                        if sm is not None:
+                            sm.update("signal_power", float(iq_pwr))
                         audio = demod_holder[0].demodulate(iq_block)
+                        # Broadcast audio via WebSocket
+                        if cfg.audio_ws is not None:
+                            cfg.audio_ws.broadcast(audio.tobytes())
                         # Include pre-HP audio if the demodulator provides it
                         pre_hp = getattr(demod_holder[0], "pre_hp_audio", None)
                         if pre_hp is not None:
@@ -101,6 +120,9 @@ class RecordingSession:
             return stats
 
         finally:
+            # Publish stopped status before cleanup
+            if sm is not None:
+                sm.update("status", "stopped")
             if cfg.transcriber:
                 cfg.transcriber.close()
 

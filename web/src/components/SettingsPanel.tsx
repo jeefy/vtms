@@ -1,48 +1,59 @@
 import { useState } from "react";
-import type { AppConfig, GaugeConfigEntry } from "../types/config";
+import type { AppConfig, GaugeConfigEntry, GoProConfig, MqttConfig } from "../types/config";
 
 interface SettingsPanelProps {
   config: AppConfig;
   onSave: (config: AppConfig) => Promise<{ ok: boolean; error?: string }>;
-  onReset: () => Promise<{ ok: boolean; error?: string }>;
+  onReset: () => Promise<{ ok: boolean; error?: string; config?: AppConfig }>;
   onClose: () => void;
 }
 
 export function SettingsPanel({ config, onSave, onReset, onClose }: SettingsPanelProps) {
   const [draft, setDraft] = useState<AppConfig>(structuredClone(config));
   const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"connection" | "gauges">("connection");
 
   const handleSave = async () => {
     setSaving(true);
     setError(null);
-    const result = await onSave(draft);
-    setSaving(false);
-    if (result.ok) {
-      onClose();
-    } else {
-      setError(result.error ?? "Save failed");
+    try {
+      const result = await onSave(draft);
+      if (result.ok) {
+        onClose();
+      } else {
+        setError(result.error ?? "Save failed");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unexpected error");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleReset = async () => {
-    setSaving(true);
+    setResetting(true);
     setError(null);
-    const result = await onReset();
-    setSaving(false);
-    if (result.ok) {
-      onClose();
-    } else {
-      setError(result.error ?? "Reset failed");
+    try {
+      const result = await onReset();
+      if (result.ok && result.config) {
+        setDraft(structuredClone(result.config));
+      } else {
+        setError(result.error ?? "Reset failed");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unexpected error");
+    } finally {
+      setResetting(false);
     }
   };
 
-  const updateMqtt = (field: string, value: string) => {
+  const updateMqtt = (field: keyof MqttConfig, value: string) => {
     setDraft((d) => ({ ...d, mqtt: { ...d.mqtt, [field]: value } }));
   };
 
-  const updateGoPro = (field: string, value: string) => {
+  const updateGoPro = (field: keyof GoProConfig, value: string) => {
     setDraft((d) => ({ ...d, gopro: { ...d.gopro, [field]: value } }));
   };
 
@@ -245,14 +256,14 @@ export function SettingsPanel({ config, onSave, onReset, onClose }: SettingsPane
         {error && <div className="settings-error">{error}</div>}
 
         <div className="settings-footer">
-          <button className="settings-btn settings-btn-secondary" onClick={handleReset} disabled={saving}>
-            Reset to Defaults
+          <button className="settings-btn settings-btn-secondary" onClick={handleReset} disabled={saving || resetting}>
+            {resetting ? "Resetting..." : "Reset to Defaults"}
           </button>
           <div className="settings-footer-right">
-            <button className="settings-btn settings-btn-secondary" onClick={onClose} disabled={saving}>
+            <button className="settings-btn settings-btn-secondary" onClick={onClose} disabled={saving || resetting}>
               Cancel
             </button>
-            <button className="settings-btn settings-btn-primary" onClick={handleSave} disabled={saving}>
+            <button className="settings-btn settings-btn-primary" onClick={handleSave} disabled={saving || resetting}>
               {saving ? "Saving..." : "Save"}
             </button>
           </div>

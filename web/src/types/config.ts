@@ -21,8 +21,14 @@ export interface GoProConfig {
   streamWsUrl: string;
 }
 
+export interface SDRConfig {
+  /** WebSocket URL for live PCM audio streaming */
+  audioWsUrl: string;
+}
+
 export interface AppConfig {
   mqtt: MqttConfig;
   gopro: GoProConfig;
+  sdr: SDRConfig;
   gauges: GaugeConfigEntry[];
 }

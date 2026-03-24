@@ -35,10 +35,11 @@ body,
 .layout { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
 .layout-header { flex-shrink: 0; }
 .layout-main { flex: 1; display: flex; min-height: 0; }
-.layout-left { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.layout-gopro { flex: 1; min-height: 0; position: relative; border-bottom: 1px solid var(--border); }
+.layout-left { flex: 45; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.layout-gopro { flex: 0 0 auto; min-height: 0; position: relative; border-top: 1px solid var(--border); }
 .layout-map { flex: 1; min-height: 0; position: relative; }
-.layout-gauges { flex: 1; min-width: 0; min-height: 0; overflow: hidden; border-left: 1px solid var(--border); }
+.layout-gauges { flex: 25; min-width: 0; min-height: 0; overflow: hidden; border-left: 1px solid var(--border); }
+.layout-sdr { flex: 30; min-width: 0; min-height: 0; overflow-y: auto; border-left: 1px solid var(--border); }
 
 /* ── Status Bar ───────────────────────────────────────────── */
 .status-bar {
@@ -309,6 +310,13 @@ body,
   }
 
   .layout-gauges {
+    flex: none;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    max-height: 50vh;
+  }
+
+  .layout-sdr {
     flex: none;
     border-left: none;
     border-top: 1px solid var(--border);
@@ -594,4 +602,241 @@ body,
 
 .settings-gear-btn:hover {
   color: var(--text);
+}
+
+/* ── SDR Panel ───────────────────────────────────────────── */
+.sdr-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  height: 100%;
+  position: relative;
+}
+
+.sdr-panel__title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.sdr-panel__offline {
+  padding: 6px 10px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ── Signal Meter ────────────────────────────────────────── */
+.signal-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.signal-meter__label {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: monospace;
+}
+
+.signal-meter__track {
+  position: relative;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.signal-meter__fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.15s ease;
+}
+
+.signal-meter__squelch {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--yellow);
+  transform: translateX(-50%);
+}
+
+/* ── SDR Controls ────────────────────────────────────────── */
+.sdr-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sdr-controls__freq {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.sdr-controls__freq-value {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: monospace;
+  color: var(--text);
+}
+
+.sdr-controls__mod {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 2px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+}
+
+.sdr-controls__sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sdr-controls__slider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.sdr-controls__slider span:first-child {
+  flex: 0 0 50px;
+}
+
+.sdr-controls__slider input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.sdr-controls__slider-value {
+  flex: 0 0 60px;
+  text-align: right;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.sdr-controls__autotune {
+  align-self: flex-start;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.sdr-controls__autotune:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.sdr-controls__autotune:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── SDR Audio Player ────────────────────────────────────── */
+.sdr-audio-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.sdr-audio-player__mute {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 60px;
+}
+
+.sdr-audio-player__mute:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.sdr-audio-player__mute--muted {
+  opacity: 0.6;
+}
+
+.sdr-audio-player__mute:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sdr-audio-player__volume {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.sdr-audio-player__status {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-dim);
+  min-width: 24px;
+}
+
+/* ── Transcription Log ───────────────────────────────────── */
+.transcription-log {
+  flex: 1;
+  min-height: 80px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.transcription-log__empty {
+  color: var(--text-dim);
+  font-style: italic;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.transcription-log__entry {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.transcription-log__entry:last-child {
+  border-bottom: none;
+}
+
+.transcription-log__time {
+  color: var(--text-dim);
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.transcription-log__text {
+  color: var(--text);
+  word-break: break-word;
 }

@@ -200,6 +200,25 @@ def main(ctx, verbose):
     default=None,
     help="DCS code for squelch gating (e.g. 23, 71, 155). Only opens squelch when this code matches.",
 )
+@click.option(
+    "--mqtt-broker",
+    type=str,
+    default=None,
+    help="MQTT broker hostname/IP. Enables publishing SDR state to MQTT.",
+)
+@click.option(
+    "--mqtt-prefix",
+    type=str,
+    default="lemons/",
+    show_default=True,
+    help="MQTT topic prefix for SDR state/control messages.",
+)
+@click.option(
+    "--audio-ws-port",
+    type=int,
+    default=None,
+    help="WebSocket port for live audio streaming (e.g. 9003).",
+)
 def record(
     freq,
     mod,
@@ -221,6 +240,9 @@ def record(
     language,
     prompt,
     dcs_code,
+    mqtt_broker,
+    mqtt_prefix,
+    audio_ws_port,
 ):
     """Record audio from a frequency.
 
@@ -397,6 +419,27 @@ def record(
     click.echo("", err=True)
 
     try:
+        # Set up StateManager and optional MQTT bridge
+        state_manager = None
+        mqtt_bridge = None
+        if mqtt_broker is not None:
+            from .mqtt_bridge import MqttBridge
+            from .state import StateManager
+
+            state_manager = StateManager()
+            mqtt_bridge = MqttBridge(
+                state_manager, broker=mqtt_broker, prefix=mqtt_prefix
+            )
+            mqtt_bridge.start()
+
+        # Set up optional audio WebSocket server
+        audio_ws_server = None
+        if audio_ws_port is not None:
+            from .audio_ws import AudioWSServer
+
+            audio_ws_server = AudioWSServer(port=audio_ws_port)
+            audio_ws_server.start()
+
         config = RecordConfig(
             freq=freq,
             mod=mod,
@@ -412,6 +455,8 @@ def record(
             volume=volume,
             label=label,
             dcs_code=dcs_code,
+            state_manager=state_manager,
+            audio_ws=audio_ws_server,
         )
         stats = RecordingSession(config).run()
 
@@ -433,6 +478,11 @@ def record(
     except Exception as e:
         click.echo(f"Unexpected error: {e}", err=True)
         sys.exit(1)
+    finally:
+        if audio_ws_server is not None:
+            audio_ws_server.stop()
+        if mqtt_bridge is not None:
+            mqtt_bridge.stop()
 
 
 @main.group()

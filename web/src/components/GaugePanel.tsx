@@ -1,4 +1,4 @@
-import { RadialGauge } from "./RadialGauge";
+import RadialGauge from "./RadialGauge";
 import type { TelemetryValue } from "../types/telemetry";
 import type { GaugeConfigEntry } from "../types/config";
 

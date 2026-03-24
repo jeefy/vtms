@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -93,21 +93,25 @@ const DEFAULT_CONFIG: AppConfig = {
 export async function loadConfig(): Promise<AppConfig> {
   try {
     const raw = await readFile(CONFIG_PATH, "utf-8");
-    return JSON.parse(raw) as AppConfig;
-  } catch (err) {
-    console.warn("Failed to load config, using defaults:", err);
-    return DEFAULT_CONFIG;
+    const parsed = JSON.parse(raw);
+    validateConfig(parsed);
+    return parsed;
+  } catch {
+    console.warn("Failed to load config, using defaults");
+    return structuredClone(DEFAULT_CONFIG);
   }
 }
 
 export async function saveConfig(config: AppConfig): Promise<void> {
   validateConfig(config);
   await mkdir(CONFIG_DIR, { recursive: true });
-  await writeFile(CONFIG_PATH, JSON.stringify(config, null, 2), "utf-8");
+  const tmpPath = CONFIG_PATH + ".tmp";
+  await writeFile(tmpPath, JSON.stringify(config, null, 2), "utf-8");
+  await rename(tmpPath, CONFIG_PATH);
 }
 
 export function getDefaultConfig(): AppConfig {
-  return DEFAULT_CONFIG;
+  return structuredClone(DEFAULT_CONFIG);
 }
 
 function validateConfig(config: unknown): asserts config is AppConfig {
@@ -137,5 +141,17 @@ function validateConfig(config: unknown): asserts config is AppConfig {
     if (typeof gauge.max !== "number") throw new Error("gauge.max must be a number");
     if (gauge.min >= gauge.max) throw new Error(`gauge "${gauge.id}": min must be less than max`);
     if (typeof gauge.unit !== "string") throw new Error("gauge.unit must be a string");
+    if (gauge.zones !== undefined) {
+      if (!Array.isArray(gauge.zones)) throw new Error("gauge.zones must be an array");
+      for (const z of gauge.zones) {
+        if (typeof z !== "object" || z === null) throw new Error("zone must be an object");
+        if (typeof z.from !== "number") throw new Error("zone.from must be a number");
+        if (typeof z.to !== "number") throw new Error("zone.to must be a number");
+        if (typeof z.color !== "string") throw new Error("zone.color must be a string");
+      }
+    }
+    if (gauge.decimals !== undefined && typeof gauge.decimals !== "number") {
+      throw new Error("gauge.decimals must be a number");
+    }
   }
 }

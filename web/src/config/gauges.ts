@@ -1,4 +1,4 @@
-import type { AppConfig, GaugeConfigEntry, MqttConfig, GoProConfig } from "../types/config";
+import type { AppConfig, GaugeConfigEntry, MqttConfig, GoProConfig, SDRConfig } from "../types/config";
 
 export const defaultGaugeConfig: GaugeConfigEntry[] = [
   {
@@ -85,8 +85,13 @@ export const defaultGoProConfig: GoProConfig = {
   streamWsUrl: import.meta.env.VITE_GOPRO_STREAM_URL ?? "ws://localhost:9002",
 };
 
+export const defaultSDRConfig: SDRConfig = {
+  audioWsUrl: import.meta.env.VITE_SDR_AUDIO_WS_URL ?? "ws://localhost:9003",
+};
+
 export const defaultAppConfig: AppConfig = {
   mqtt: defaultMqttConfig,
   gopro: defaultGoProConfig,
+  sdr: defaultSDRConfig,
   gauges: defaultGaugeConfig,
 };
