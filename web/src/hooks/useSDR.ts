@@ -43,9 +43,11 @@ export function useSDR(mqttConfig: MqttConfig) {
     const key = topic.slice(sdrStatePrefix.length);
 
     switch (key) {
-      case "freq":
-        setState((prev) => ({ ...prev, freq: parseFloat(payload) || null }));
+      case "freq": {
+        const v = parseFloat(payload);
+        setState((prev) => ({ ...prev, freq: isNaN(v) ? null : v }));
         break;
+      }
       case "mod":
         setState((prev) => ({ ...prev, mod: payload || null }));
         break;
@@ -57,30 +59,36 @@ export function useSDR(mqttConfig: MqttConfig) {
         }));
         break;
       }
-      case "squelch_db":
+      case "squelch_db": {
+        const v = parseFloat(payload);
         setState((prev) => ({
           ...prev,
-          squelch_db: parseFloat(payload) || null,
+          squelch_db: isNaN(v) ? null : v,
         }));
         break;
+      }
       case "status":
         setState((prev) => ({
           ...prev,
           status: (payload as SDRStatus) || "offline",
         }));
         break;
-      case "signal_power":
+      case "signal_power": {
+        const v = parseFloat(payload);
         setState((prev) => ({
           ...prev,
-          signal_power: parseFloat(payload),
+          signal_power: isNaN(v) ? null : v,
         }));
         break;
-      case "ppm":
+      }
+      case "ppm": {
+        const v = parseInt(payload, 10);
         setState((prev) => ({
           ...prev,
-          ppm: parseInt(payload, 10) || null,
+          ppm: isNaN(v) ? null : v,
         }));
         break;
+      }
       case "last_transcription":
         if (payload) {
           setTranscriptions((prev) => {
