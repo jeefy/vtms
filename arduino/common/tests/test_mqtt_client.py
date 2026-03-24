@@ -329,3 +329,144 @@ class TestExistingSubscribe:
         captured = capsys.readouterr()
         assert "WARNING" in captured.out
         assert "subscribe_topic()" in captured.out
+
+
+class TestOtaNotificationReboot:
+    """Test _handle_ota_notification triggers reboot on hash mismatch."""
+
+    def test_reboots_when_hash_differs(self):
+        """OTA notification with a new hash triggers machine.reset()."""
+        import mqtt_client
+
+        mock_reset = MagicMock()
+        with (
+            patch("mqtt_client.ota_update") as mock_ota,
+            patch.dict("sys.modules", {"machine": MagicMock(reset=mock_reset)}),
+        ):
+            mock_ota.read_file.return_value = "oldhash123"
+
+            mqtt_client._handle_ota_notification(
+                b"vtms/ota/test_device/notify",
+                b'{"hash": "newhash456"}',
+            )
+
+        mock_reset.assert_called_once()
+
+    def test_no_reboot_when_hash_matches(self):
+        """OTA notification with the same hash does not reboot."""
+        import mqtt_client
+
+        mock_reset = MagicMock()
+        with (
+            patch("mqtt_client.ota_update") as mock_ota,
+            patch.dict("sys.modules", {"machine": MagicMock(reset=mock_reset)}),
+        ):
+            mock_ota.read_file.return_value = "samehash"
+
+            mqtt_client._handle_ota_notification(
+                b"vtms/ota/test_device/notify",
+                b'{"hash": "samehash"}',
+            )
+
+        mock_reset.assert_not_called()
+
+    def test_no_reboot_when_no_local_hash(self):
+        """First boot with no local hash — don't reboot (boot.py already ran OTA)."""
+        import mqtt_client
+
+        mock_reset = MagicMock()
+        with (
+            patch("mqtt_client.ota_update") as mock_ota,
+            patch.dict("sys.modules", {"machine": MagicMock(reset=mock_reset)}),
+        ):
+            mock_ota.read_file.return_value = ""
+
+            mqtt_client._handle_ota_notification(
+                b"vtms/ota/test_device/notify",
+                b'{"hash": "newhash456"}',
+            )
+
+        mock_reset.assert_not_called()
+
+    def test_bad_json_does_not_crash(self, capsys):
+        """Malformed OTA notification payload is caught, not propagated."""
+        import mqtt_client
+
+        with patch("mqtt_client.ota_update") as mock_ota:
+            mock_ota.read_file.return_value = "somehash"
+
+            # Should NOT raise
+            mqtt_client._handle_ota_notification(
+                b"vtms/ota/test_device/notify",
+                b"not-json",
+            )
+
+        captured = capsys.readouterr()
+        assert "OTA notification error" in captured.out
+
+    def test_empty_server_hash_does_not_reboot(self):
+        """OTA notification with empty hash does not reboot."""
+        import mqtt_client
+
+        mock_reset = MagicMock()
+        with (
+            patch("mqtt_client.ota_update") as mock_ota,
+            patch.dict("sys.modules", {"machine": MagicMock(reset=mock_reset)}),
+        ):
+            mock_ota.read_file.return_value = "localhash"
+
+            mqtt_client._handle_ota_notification(
+                b"vtms/ota/test_device/notify",
+                b'{"hash": ""}',
+            )
+
+        mock_reset.assert_not_called()
+
+
+class TestConnectSubscribesOtaNotify:
+    """Test connect() subscribes to OTA notification topic."""
+
+    def _make_connect_work(self, mqtt_client):
+        mock_mqtt_cls = MagicMock()
+        mock_client = MagicMock()
+        mock_mqtt_cls.return_value = mock_client
+        mqtt_client.MQTTClient = mock_mqtt_cls
+        return mock_client
+
+    @patch("mqtt_client._client_id", return_value="test-ota1")
+    def test_connect_subscribes_to_ota_notify(self, _mock_id):
+        """connect() subscribes to vtms/ota/{DEVICE_TYPE}/notify."""
+        import mqtt_client
+
+        mock_client = self._make_connect_work(mqtt_client)
+        try:
+            mqtt_client.connect()
+
+            subscribe_calls = mock_client.subscribe.call_args_list
+            topics = [c[0][0] for c in subscribe_calls]
+            assert b"vtms/ota/test_device/notify" in topics
+        finally:
+            mqtt_client.MQTTClient = None
+
+    @patch("mqtt_client._client_id", return_value="test-ota2")
+    def test_combined_callback_routes_ota_notification(self, _mock_id):
+        """Combined callback calls _handle_ota_notification for OTA topics."""
+        import mqtt_client
+
+        mock_client = self._make_connect_work(mqtt_client)
+        try:
+            mqtt_client.connect()
+
+            combined_cb = mock_client.set_callback.call_args[0][0]
+
+            with patch.object(mqtt_client, "_handle_ota_notification") as mock_handler:
+                combined_cb(
+                    b"vtms/ota/test_device/notify",
+                    b'{"hash": "abc"}',
+                )
+                mock_handler.assert_called_once_with(
+                    b"vtms/ota/test_device/notify",
+                    b'{"hash": "abc"}',
+                )
+        finally:
+            mqtt_client.MQTTClient = None

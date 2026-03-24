@@ -79,6 +79,38 @@ def _handle_status_request(client):
         print("Status request failed:", e)
 
 
+def _handle_ota_notification(topic, msg):
+    """Check OTA hash notification and reboot if firmware has changed.
+
+    Compares the announced hash against the locally stored hash.
+    If they differ (and a local hash exists), triggers machine.reset()
+    so boot.py can apply the OTA update.
+
+    Errors are caught and printed — OTA notification should never crash
+    the main loop.
+    """
+    try:
+        payload = ujson.loads(msg)
+        server_hash = payload.get("hash", "")
+        if not server_hash:
+            return
+
+        from ota_update import HASH_FILE
+
+        local_hash = ota_update.read_file(HASH_FILE)
+        if not local_hash:
+            # First boot or no hash file — boot.py already ran OTA check
+            return
+
+        if server_hash != local_hash:
+            print("OTA: new firmware detected, rebooting...")
+            import machine
+
+            machine.reset()
+    except Exception as e:
+        print("OTA notification error:", e)
+
+
 def connect(user_callback=None):
     """Create and connect an MQTT client. Returns the client instance.
 
@@ -104,16 +136,21 @@ def connect(user_callback=None):
         "lemons/status/request/{}".format(DEVICE_TYPE).encode(),
     )
 
+    ota_topic = "vtms/ota/{}/notify".format(DEVICE_TYPE).encode()
+
     def combined_callback(topic, msg):
         if topic in status_topics:
             _handle_status_request(client)
+        elif topic == ota_topic:
+            _handle_ota_notification(topic, msg)
         elif user_callback is not None:
             user_callback(topic, msg)
 
     client.set_callback(combined_callback)
     client.subscribe(b"lemons/status/request")
     client.subscribe("lemons/status/request/{}".format(DEVICE_TYPE).encode())
-    print("MQTT: subscribed to status request topics")
+    client.subscribe(ota_topic)
+    print("MQTT: subscribed to status request and OTA notification topics")
 
     return client
 
