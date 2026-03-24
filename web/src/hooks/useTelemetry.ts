@@ -49,6 +49,7 @@ export function useTelemetry(mqttConfig: MqttConfig) {
 
   // Use a ref for the trail so we can append without causing re-renders on every GPS update
   const trailRef = useRef<[number, number][]>([]);
+  const trailCountRef = useRef(0);
   const prefixRef = useRef(mqttConfig.topicPrefix);
   prefixRef.current = mqttConfig.topicPrefix;
 
@@ -91,7 +92,10 @@ export function useTelemetry(mqttConfig: MqttConfig) {
                 newTrail.splice(0, newTrail.length - TRAIL_MAX_LENGTH);
               }
               trailRef.current = newTrail;
-              setTrail(newTrail);
+              trailCountRef.current++;
+              if (trailCountRef.current % 5 === 0) {
+                setTrail([...trailRef.current]);
+              }
             }
             break;
           }
