@@ -20,6 +20,18 @@ MQTT_TOPIC_PREFIX = "lemons/analog"
 FUEL_ADC_PIN = 34  # GPIO34, ADC1_CH6
 OIL_ADC_PIN = 35  # GPIO35, ADC1_CH7
 
+# Spare voltage sensor pins (raw voltage output for wiring verification)
+SPARE_1_ADC_PIN = 32  # GPIO32, ADC1_CH4 (D32)
+SPARE_2_ADC_PIN = 33  # GPIO33, ADC1_CH5 (D33)
+SPARE_3_ADC_PIN = 36  # GPIO36, ADC1_CH0 (VP)
+
+# Spare pin/topic pairs for iteration in main loop
+SPARE_PINS = [
+    (SPARE_1_ADC_PIN, "spare_1"),
+    (SPARE_2_ADC_PIN, "spare_2"),
+    (SPARE_3_ADC_PIN, "spare_3"),
+]
+
 # ESP32 ADC reference voltage
 V_REF = 3.3
 

@@ -19,15 +19,24 @@ Fuel gauge wire ──┬── stock gauge
             [HiLetgo module]
             VCC ── tap point
             GND ── ESP32 GND
-            S ──── ESP32 GPIO34
+            S ──── ESP32 GPIO34 (D34)
 
 Oil gauge wire ───┬── Greddy gauge
                   │
             [HiLetgo module]
             VCC ── tap point
             GND ── ESP32 GND
-            S ──── ESP32 GPIO35
+            S ──── ESP32 GPIO35 (D35)
+
+Spare sensor 1 ──[HiLetgo module]── S ── ESP32 GPIO32 (D32)
+Spare sensor 2 ──[HiLetgo module]── S ── ESP32 GPIO33 (D33)
+Spare sensor 3 ──[HiLetgo module]── S ── ESP32 GPIO36 (VP)
 ```
+
+All spare HiLetgo modules: VCC to tap point, GND to ESP32 GND.
+
+**Note:** All analog pins must be on ADC1 (GPIO32-36, 39). ADC2 pins are
+unavailable when WiFi is active.
 
 **Safety:** Measure actual voltage at each gauge wire with a multimeter before
 connecting. Expected 0-5V range; module output 0-1V (safe for ESP32 3.3V ADC).
@@ -116,5 +125,8 @@ boot count mechanism prevents infinite update loops.
 |-------|---------|-------|
 | `lemons/analog/fuel_level` | `0.0` - `100.0` | percent |
 | `lemons/analog/oil_pressure` | `0.0` - `150.0` | PSI |
+| `lemons/analog/spare_1` | `0.0000` - `3.3000` | volts (raw) |
+| `lemons/analog/spare_2` | `0.0000` - `3.3000` | volts (raw) |
+| `lemons/analog/spare_3` | `0.0000` - `3.3000` | volts (raw) |
 | `lemons/analog/raw/a0_voltage` | raw voltage | volts (debug) |
 | `lemons/analog/raw/a1_voltage` | raw voltage | volts (debug) |

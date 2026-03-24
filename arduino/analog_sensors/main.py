@@ -1,7 +1,8 @@
 """Main loop: read analog sensors, convert, publish to MQTT.
 
 Runs after boot.py connects to WiFi. Reads gauge voltages through
-HiLetgo 0-25V voltage divider modules on GPIO34 (fuel) and GPIO35 (oil).
+HiLetgo 0-25V voltage divider modules on GPIO34 (fuel), GPIO35 (oil),
+and spare voltage inputs on GPIO32, GPIO33, GPIO36 (VP).
 """
 
 import time
@@ -17,6 +18,7 @@ except ImportError:
 from config import (
     FUEL_ADC_PIN,
     OIL_ADC_PIN,
+    SPARE_PINS,
     FUEL_V_FULL,
     FUEL_V_EMPTY,
     OIL_V_0PSI,
@@ -60,6 +62,11 @@ def main():
     fuel_adc = setup_adc(FUEL_ADC_PIN)
     oil_adc = setup_adc(OIL_ADC_PIN)
 
+    # Set up spare voltage sensor ADC channels
+    spare_adcs = []
+    for pin_num, topic_name in SPARE_PINS:
+        spare_adcs.append((setup_adc(pin_num), topic_name))
+
     # Connect MQTT
     mqtt = None
     while mqtt is None:
@@ -72,6 +79,7 @@ def main():
     # Smoothed values (None = first reading)
     fuel_smoothed = None
     oil_smoothed = None
+    spare_smoothed = {name: None for _, name in SPARE_PINS}
 
     # Hardware watchdog — resets ESP32 if main loop hangs
     try:
@@ -135,6 +143,17 @@ def main():
                 oil_smoothed, OIL_V_0PSI, OIL_V_MAX, OIL_MAX_PSI
             )
             mqtt_client.publish(mqtt, _topic("oil_pressure"), "{:.1f}".format(oil_psi))
+
+            # Read and publish spare voltage sensors (raw module output)
+            for adc, name in spare_adcs:
+                raw = adc.read()
+                voltage = adc_to_voltage(raw)
+                spare_smoothed[name] = ema_smooth(
+                    voltage, spare_smoothed[name], EMA_ALPHA
+                )
+                mqtt_client.publish(
+                    mqtt, _topic(name), "{:.4f}".format(spare_smoothed[name])
+                )
 
             if not boot_count_reset:
                 from ota_update import reset_boot_count
