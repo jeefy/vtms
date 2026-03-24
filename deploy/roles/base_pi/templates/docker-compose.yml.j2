@@ -21,7 +21,16 @@ services:
     volumes:
       - /dev/bus/usb:/dev/bus/usb
       - vtms-sdr-data:/app/data
-    command: ["record", "--freq", "462.5625M"]
+    environment:
+      - MQTT_BROKER={{ mqtt_broker | default('127.0.0.1') }}
+      - MQTT_PREFIX={{ mqtt_prefix | default('lemons/') }}
+      - AUDIO_WS_PORT={{ sdr_audio_ws_port | default('9003') }}
+    command: >-
+      record
+      --freq 462.5625M
+      --mqtt-broker ${MQTT_BROKER}
+      --mqtt-prefix ${MQTT_PREFIX}
+      --audio-ws-port ${AUDIO_WS_PORT}
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 

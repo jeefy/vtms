@@ -29,6 +29,9 @@ RUN uv pip install --system \
     --group monitor \
     -e .
 
+# Audio WebSocket port
+EXPOSE 9003
+
 # Default: show help. Override CMD at runtime.
 ENTRYPOINT ["vtms-sdr"]
 CMD ["--help"]
