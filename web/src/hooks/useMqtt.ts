@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import mqtt, { type MqttClient } from "mqtt";
 import type { MqttConnectionStatus } from "../types/telemetry";
 
@@ -19,9 +19,7 @@ export function useMqtt(
     onMessageRef.current = onMessage;
   }, [onMessage]);
 
-  const connect = useCallback(() => {
-    if (clientRef.current?.connected) return;
-
+  useEffect(() => {
     setStatus("connecting");
 
     const client = mqtt.connect(brokerUrl, {
@@ -30,6 +28,8 @@ export function useMqtt(
       clean: true,
       clientId: `vtms-web-${Math.random().toString(16).slice(2, 8)}`,
     });
+
+    clientRef.current = client;
 
     client.on("connect", () => {
       setStatus("connected");
@@ -44,18 +44,12 @@ export function useMqtt(
     client.on("close", () => setStatus("disconnected"));
     client.on("reconnect", () => setStatus("connecting"));
 
-    clientRef.current = client;
-  }, [brokerUrl, topicPrefix]);
-
-  useEffect(() => {
-    connect();
     return () => {
-      if (clientRef.current) {
-        clientRef.current.end(true);
-        clientRef.current = null;
-      }
+      client.end(true);
+      clientRef.current = null;
+      setStatus("disconnected");
     };
-  }, [connect]);
+  }, [brokerUrl, topicPrefix]);
 
   return { status };
 }
