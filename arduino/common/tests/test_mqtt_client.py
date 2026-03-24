@@ -3,12 +3,14 @@
 Run on host with CPython/pytest.
 """
 
+import json
 import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
+from unittest.mock import MagicMock, patch, call
 
 
 class TestMqttConnect:
@@ -24,3 +26,235 @@ class TestMqttConnect:
                 mqtt_client.connect()
         finally:
             mqtt_client.MQTTClient = orig
+
+
+class TestHandleStatusRequest:
+    """Test _handle_status_request builds and publishes diagnostics."""
+
+    def test_publishes_diagnostics_json(self):
+        """Status request handler publishes JSON with all diagnostic fields."""
+        import mqtt_client
+
+        mock_client = MagicMock()
+        mock_wlan = MagicMock()
+        mock_wlan.status.return_value = -55
+        mock_wlan.config.return_value = "MyNetwork"
+        mock_wlan.ifconfig.return_value = ("192.168.1.42", "", "", "")
+
+        with (
+            patch("mqtt_client.gc") as mock_gc,
+            patch("mqtt_client.time") as mock_time,
+            patch("mqtt_client.network") as mock_network,
+            patch("mqtt_client._client_id", return_value="test-abc123"),
+            patch("mqtt_client.ota_update") as mock_ota,
+        ):
+            mock_gc.mem_free.return_value = 50000
+            mock_time.ticks_ms.return_value = 120000
+            mock_network.WLAN.return_value = mock_wlan
+            mock_ota.read_file.return_value = "abc123hash"
+
+            mqtt_client._handle_status_request(mock_client)
+
+        # Verify publish was called
+        assert mock_client.publish.call_count == 1
+        topic_arg = mock_client.publish.call_args[0][0]
+        msg_arg = mock_client.publish.call_args[0][1]
+
+        assert topic_arg == b"lemons/status/response/test_device"
+
+        payload = json.loads(msg_arg.decode())
+        assert payload["device_type"] == "test_device"
+        assert payload["client_id"] == "test-abc123"
+        assert payload["firmware_hash"] == "abc123hash"
+        assert payload["uptime_s"] == 120
+        assert payload["free_mem"] == 50000
+        assert payload["wifi_rssi"] == -55
+        assert payload["wifi_ssid"] == "MyNetwork"
+        assert payload["ip"] == "192.168.1.42"
+
+    def test_firmware_hash_unknown_when_read_fails(self):
+        """When ota_update.read_file returns empty, firmware_hash is 'unknown'."""
+        import mqtt_client
+
+        mock_client = MagicMock()
+        mock_wlan = MagicMock()
+        mock_wlan.status.return_value = -70
+        mock_wlan.config.return_value = "Net"
+        mock_wlan.ifconfig.return_value = ("10.0.0.1", "", "", "")
+
+        with (
+            patch("mqtt_client.gc") as mock_gc,
+            patch("mqtt_client.time") as mock_time,
+            patch("mqtt_client.network") as mock_network,
+            patch("mqtt_client._client_id", return_value="test-xyz"),
+            patch("mqtt_client.ota_update") as mock_ota,
+        ):
+            mock_gc.mem_free.return_value = 30000
+            mock_time.ticks_ms.return_value = 5000
+            mock_network.WLAN.return_value = mock_wlan
+            mock_ota.read_file.return_value = ""
+
+            mqtt_client._handle_status_request(mock_client)
+
+        msg_arg = mock_client.publish.call_args[0][1]
+        payload = json.loads(msg_arg.decode())
+        assert payload["firmware_hash"] == "unknown"
+
+
+class TestConnectWithCallback:
+    """Test connect() sets up combined callback and subscribes to status topics."""
+
+    def _make_connect_work(self, mqtt_client):
+        """Set up mocks so connect() can execute."""
+        mock_mqtt_cls = MagicMock()
+        mock_client = MagicMock()
+        mock_mqtt_cls.return_value = mock_client
+        mqtt_client.MQTTClient = mock_mqtt_cls
+        return mock_client
+
+    @patch("mqtt_client._client_id", return_value="test-aaa")
+    def test_connect_without_callback_still_works(self, _mock_id):
+        """connect() with no args is backward compatible."""
+        import mqtt_client
+
+        mock_client = self._make_connect_work(mqtt_client)
+        try:
+            result = mqtt_client.connect()
+            assert result is mock_client
+            mock_client.connect.assert_called_once()
+        finally:
+            mqtt_client.MQTTClient = None
+
+    @patch("mqtt_client._client_id", return_value="test-bbb")
+    def test_connect_subscribes_to_status_topics(self, _mock_id):
+        """connect() subscribes to both status request topics."""
+        import mqtt_client
+
+        mock_client = self._make_connect_work(mqtt_client)
+        try:
+            mqtt_client.connect()
+
+            subscribe_calls = mock_client.subscribe.call_args_list
+            topics = [c[0][0] for c in subscribe_calls]
+            assert b"lemons/status/request" in topics
+            assert b"lemons/status/request/test_device" in topics
+        finally:
+            mqtt_client.MQTTClient = None
+
+    @patch("mqtt_client._client_id", return_value="test-ccc")
+    def test_connect_sets_combined_callback(self, _mock_id):
+        """connect() sets a callback on the client."""
+        import mqtt_client
+
+        mock_client = self._make_connect_work(mqtt_client)
+        try:
+            mqtt_client.connect()
+            mock_client.set_callback.assert_called_once()
+        finally:
+            mqtt_client.MQTTClient = None
+
+    @patch("mqtt_client._client_id", return_value="test-ddd")
+    def test_combined_callback_routes_status_request(self, _mock_id):
+        """Combined callback calls _handle_status_request for status topics."""
+        import mqtt_client
+
+        mock_client = self._make_connect_work(mqtt_client)
+        try:
+            mqtt_client.connect()
+
+            # Get the combined callback that was set
+            combined_cb = mock_client.set_callback.call_args[0][0]
+
+            with patch.object(mqtt_client, "_handle_status_request") as mock_handler:
+                combined_cb(b"lemons/status/request", b"")
+                mock_handler.assert_called_once_with(mock_client)
+        finally:
+            mqtt_client.MQTTClient = None
+
+    @patch("mqtt_client._client_id", return_value="test-eee")
+    def test_combined_callback_routes_device_specific_status(self, _mock_id):
+        """Combined callback handles device-specific status request topic."""
+        import mqtt_client
+
+        mock_client = self._make_connect_work(mqtt_client)
+        try:
+            mqtt_client.connect()
+
+            combined_cb = mock_client.set_callback.call_args[0][0]
+
+            with patch.object(mqtt_client, "_handle_status_request") as mock_handler:
+                combined_cb(b"lemons/status/request/test_device", b"")
+                mock_handler.assert_called_once_with(mock_client)
+        finally:
+            mqtt_client.MQTTClient = None
+
+    @patch("mqtt_client._client_id", return_value="test-fff")
+    def test_combined_callback_forwards_other_topics_to_user_callback(self, _mock_id):
+        """Non-status topics are forwarded to user_callback."""
+        import mqtt_client
+
+        mock_client = self._make_connect_work(mqtt_client)
+        user_cb = MagicMock()
+        try:
+            mqtt_client.connect(user_callback=user_cb)
+
+            combined_cb = mock_client.set_callback.call_args[0][0]
+            combined_cb(b"lemons/temp/oil_F", b"205")
+
+            user_cb.assert_called_once_with(b"lemons/temp/oil_F", b"205")
+        finally:
+            mqtt_client.MQTTClient = None
+
+    @patch("mqtt_client._client_id", return_value="test-ggg")
+    def test_combined_callback_no_user_callback_ignores_other_topics(self, _mock_id):
+        """Without user_callback, non-status topics are silently ignored."""
+        import mqtt_client
+
+        mock_client = self._make_connect_work(mqtt_client)
+        try:
+            mqtt_client.connect()
+
+            combined_cb = mock_client.set_callback.call_args[0][0]
+            # Should not raise
+            combined_cb(b"lemons/temp/oil_F", b"205")
+        finally:
+            mqtt_client.MQTTClient = None
+
+
+class TestSubscribeTopic:
+    """Test subscribe_topic() subscribes without setting callback."""
+
+    def test_subscribes_without_setting_callback(self):
+        """subscribe_topic() only calls client.subscribe, not set_callback."""
+        import mqtt_client
+
+        mock_client = MagicMock()
+        mqtt_client.subscribe_topic(mock_client, "lemons/led/command")
+
+        mock_client.subscribe.assert_called_once_with(b"lemons/led/command")
+        mock_client.set_callback.assert_not_called()
+
+    def test_subscribe_topic_prints_topic(self, capsys):
+        """subscribe_topic() prints confirmation."""
+        import mqtt_client
+
+        mock_client = MagicMock()
+        mqtt_client.subscribe_topic(mock_client, "lemons/led/command")
+
+        captured = capsys.readouterr()
+        assert "lemons/led/command" in captured.out
+
+
+class TestExistingSubscribe:
+    """Verify existing subscribe() function is unchanged."""
+
+    def test_subscribe_sets_callback_and_subscribes(self):
+        """Original subscribe() still sets callback and subscribes."""
+        import mqtt_client
+
+        mock_client = MagicMock()
+        mock_cb = MagicMock()
+        mqtt_client.subscribe(mock_client, "lemons/temp/oil_F", mock_cb)
+
+        mock_client.set_callback.assert_called_once_with(mock_cb)
+        mock_client.subscribe.assert_called_once_with(b"lemons/temp/oil_F")
