@@ -111,7 +111,8 @@ lint: client-lint sdr-lint
 .PHONY: flash-fresh-analog-sensors flash-fresh-thermoprobe flash-fresh-temp-sensor flash-fresh-led-controller
 
 MICROPYTHON_VERSION ?= v1.25.0
-MICROPYTHON_FW     := .cache/ESP32_GENERIC-$(MICROPYTHON_VERSION).bin
+MICROPYTHON_DATE   ?= 20250415
+MICROPYTHON_FW     := .cache/ESP32_GENERIC-$(MICROPYTHON_DATE)-$(MICROPYTHON_VERSION).bin
 ESP_PORT           ?= auto
 
 # When ESP_PORT is "auto", let mpremote auto-detect; otherwise connect explicitly.
@@ -139,11 +140,13 @@ esp32-test:
 # ── Firmware download & initial flash ─────────────────
 $(MICROPYTHON_FW):
 	@mkdir -p .cache
-	curl -fSL -o $@ https://micropython.org/resources/firmware/ESP32_GENERIC-$(MICROPYTHON_VERSION).bin
+	curl -fSL -o $@ https://micropython.org/resources/firmware/ESP32_GENERIC-$(MICROPYTHON_DATE)-$(MICROPYTHON_VERSION).bin
 
 flash-micropython: $(MICROPYTHON_FW)
 	esptool.py --chip esp32 $(ESPTOOL_PORT) erase_flash
 	esptool.py --chip esp32 $(ESPTOOL_PORT) write_flash -z 0x1000 $(MICROPYTHON_FW)
+	@echo "Waiting for device to complete first boot…"
+	@sleep 5
 	$(MPREMOTE) mip install umqtt.robust
 
 # ── Secrets generation ────────────────────────────────
@@ -171,7 +174,7 @@ endef
 
 # Copies staged files to device, resets, and cleans up
 define flash-staged
-	$(MPREMOTE) cp -r .flash-stage/ : + reset
+	$(MPREMOTE) cp .flash-stage/* : + reset
 	@rm -rf .flash-stage
 endef
 
