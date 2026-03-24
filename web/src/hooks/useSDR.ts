@@ -98,7 +98,7 @@ export function useSDR(mqttConfig: MqttConfig) {
     }
   }, []);
 
-  const { status: connectionStatus } = useMqtt(
+  const { status: connectionStatus, publish: mqttPublish } = useMqtt(
     mqttConfig.url,
     mqttConfig.topicPrefix,
     handleMessage,
@@ -107,17 +107,18 @@ export function useSDR(mqttConfig: MqttConfig) {
   /**
    * Publish a control command to `{prefix}sdr/control/{action}`.
    *
-   * This is a no-op stub — the `useMqtt` hook doesn't expose the client
-   * for publishing. For now, control messages are sent via the REST API
-   * or by creating a separate MQTT publish connection. This placeholder
-   * keeps the API surface ready for when we add publish support to useMqtt.
+   * Scalar values are sent as plain strings; objects are JSON-encoded.
+   * Returns `true` if the message was sent, `false` if the client was
+   * not connected.
    */
   const publish = useCallback(
-    (_action: SDRControlAction, _value: string | number | Record<string, unknown>) => {
-      // TODO: implement when useMqtt exposes publish capability
-      console.warn("useSDR.publish() not yet wired — useMqtt needs publish support");
+    (action: SDRControlAction, value: string | number | Record<string, unknown>): boolean => {
+      const topic = `${prefixRef.current}sdr/control/${action}`;
+      const payload =
+        typeof value === "object" ? JSON.stringify(value) : String(value);
+      return mqttPublish(topic, payload);
     },
-    [],
+    [mqttPublish],
   );
 
   return {

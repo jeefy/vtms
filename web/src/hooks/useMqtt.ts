@@ -51,5 +51,20 @@ export function useMqtt(
     };
   }, [brokerUrl, topicPrefix]);
 
-  return { status };
+  /**
+   * Publish a message to an arbitrary MQTT topic.
+   *
+   * Returns `true` if the client was connected and the message was sent,
+   * `false` otherwise (client not connected or already closed).
+   */
+  const publish = useRef((topic: string, payload: string) => {
+    const client = clientRef.current;
+    if (!client || !client.connected) {
+      return false;
+    }
+    client.publish(topic, payload);
+    return true;
+  }).current;
+
+  return { status, publish };
 }
