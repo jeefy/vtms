@@ -27,42 +27,56 @@ from config import MQTT_BROKER, MQTT_PORT, MQTT_CLIENT_PREFIX
 
 import ota_update
 
+_cached_client_id = None
+
 
 def _client_id():
-    """Generate a unique client ID from the MAC address."""
+    """Generate a unique client ID from the MAC address.
+
+    Result is cached — the MAC address never changes at runtime.
+    """
+    global _cached_client_id
+    if _cached_client_id is not None:
+        return _cached_client_id
     import ubinascii
 
     mac = network.WLAN(network.STA_IF).config("mac")
     suffix = ubinascii.hexlify(mac[-3:]).decode()
-    return "{}-{}".format(MQTT_CLIENT_PREFIX, suffix)
+    _cached_client_id = "{}-{}".format(MQTT_CLIENT_PREFIX, suffix)
+    return _cached_client_id
 
 
 def _handle_status_request(client):
     """Build and publish device diagnostics as JSON.
 
     Publishes to lemons/status/response/{DEVICE_TYPE}.
+    Errors are caught and printed — status should never crash the main loop.
     """
-    from config import DEVICE_TYPE
-    from ota_update import HASH_FILE
+    try:
+        from config import DEVICE_TYPE
+        from ota_update import HASH_FILE
 
-    fw_hash = ota_update.read_file(HASH_FILE)
-    if not fw_hash:
-        fw_hash = "unknown"
+        fw_hash = ota_update.read_file(HASH_FILE)
+        if not fw_hash:
+            fw_hash = "unknown"
 
-    wlan = network.WLAN(network.STA_IF)
-    response = {
-        "device_type": DEVICE_TYPE,
-        "client_id": _client_id(),
-        "firmware_hash": fw_hash,
-        "uptime_s": time.ticks_ms() // 1000,
-        "free_mem": gc.mem_free(),
-        "wifi_rssi": wlan.status("rssi"),
-        "wifi_ssid": wlan.config("essid"),
-        "ip": wlan.ifconfig()[0],
-    }
+        free_mem = gc.mem_free()
+        wlan = network.WLAN(network.STA_IF)
+        response = {
+            "device_type": DEVICE_TYPE,
+            "client_id": _client_id(),
+            "firmware_hash": fw_hash,
+            "uptime_s": time.ticks_ms() // 1000,
+            "free_mem": free_mem,
+            "wifi_rssi": wlan.status("rssi"),
+            "wifi_ssid": wlan.config("essid"),
+            "ip": wlan.ifconfig()[0],
+        }
 
-    topic = "lemons/status/response/{}".format(DEVICE_TYPE)
-    client.publish(topic.encode(), ujson.dumps(response).encode())
+        topic = "lemons/status/response/{}".format(DEVICE_TYPE)
+        client.publish(topic.encode(), ujson.dumps(response).encode())
+    except Exception as e:
+        print("Status request failed:", e)
 
 
 def connect(user_callback=None):
@@ -138,8 +152,15 @@ def subscribe(client, topic, callback):
     WARNING: umqtt supports only one global callback. Calling subscribe()
     again with a different callback replaces the previous one.
 
+    DEPRECATED: Use subscribe_topic() instead to avoid overwriting the
+    combined callback set by connect().
+
     callback signature: callback(topic_bytes, msg_bytes)
     """
+    print(
+        "WARNING: subscribe() overwrites the combined callback set by"
+        " connect(). Use subscribe_topic() instead."
+    )
     client.set_callback(callback)
     client.subscribe(topic.encode())
     print("MQTT: subscribed to", topic)

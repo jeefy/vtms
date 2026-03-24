@@ -100,6 +100,65 @@ class TestHandleStatusRequest:
         payload = json.loads(msg_arg.decode())
         assert payload["firmware_hash"] == "unknown"
 
+    def test_exception_is_caught_and_printed(self, capsys):
+        """Errors in _handle_status_request are caught, not propagated."""
+        import mqtt_client
+
+        mock_client = MagicMock()
+
+        with (
+            patch("mqtt_client.gc") as mock_gc,
+            patch("mqtt_client.network") as mock_network,
+            patch("mqtt_client.ota_update") as mock_ota,
+        ):
+            mock_ota.read_file.side_effect = OSError("disk error")
+
+            # Should NOT raise
+            mqtt_client._handle_status_request(mock_client)
+
+        mock_client.publish.assert_not_called()
+        captured = capsys.readouterr()
+        assert "Status request failed:" in captured.out
+        assert "disk error" in captured.out
+
+
+class TestClientIdCaching:
+    """Test _client_id() caches its result."""
+
+    def setup_method(self):
+        import mqtt_client
+
+        mqtt_client._cached_client_id = None
+
+    def teardown_method(self):
+        import mqtt_client
+
+        mqtt_client._cached_client_id = None
+
+    def test_client_id_caches_result(self):
+        """_client_id() only reads MAC once, returns cached value after."""
+        import mqtt_client
+
+        mock_wlan = MagicMock()
+        mock_wlan.config.return_value = b"\x00\x00\x00\xaa\xbb\xcc"
+
+        mock_ubinascii = MagicMock()
+        mock_ubinascii.hexlify.return_value = b"aabbcc"
+
+        with (
+            patch("mqtt_client.network") as mock_network,
+            patch.dict("sys.modules", {"ubinascii": mock_ubinascii}),
+        ):
+            mock_network.WLAN.return_value = mock_wlan
+            mock_network.STA_IF = 0
+
+            first = mqtt_client._client_id()
+            second = mqtt_client._client_id()
+
+        assert first == second
+        # WLAN should only be accessed once
+        assert mock_network.WLAN.call_count == 1
+
 
 class TestConnectWithCallback:
     """Test connect() sets up combined callback and subscribes to status topics."""
@@ -246,7 +305,7 @@ class TestSubscribeTopic:
 
 
 class TestExistingSubscribe:
-    """Verify existing subscribe() function is unchanged."""
+    """Verify existing subscribe() function still works but warns."""
 
     def test_subscribe_sets_callback_and_subscribes(self):
         """Original subscribe() still sets callback and subscribes."""
@@ -258,3 +317,15 @@ class TestExistingSubscribe:
 
         mock_client.set_callback.assert_called_once_with(mock_cb)
         mock_client.subscribe.assert_called_once_with(b"lemons/temp/oil_F")
+
+    def test_subscribe_prints_deprecation_warning(self, capsys):
+        """subscribe() prints a deprecation warning about subscribe_topic()."""
+        import mqtt_client
+
+        mock_client = MagicMock()
+        mock_cb = MagicMock()
+        mqtt_client.subscribe(mock_client, "lemons/temp/oil_F", mock_cb)
+
+        captured = capsys.readouterr()
+        assert "WARNING" in captured.out
+        assert "subscribe_topic()" in captured.out
