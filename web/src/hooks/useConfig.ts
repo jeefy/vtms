@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import type { AppConfig } from "../types/config";
 import { defaultAppConfig } from "../config/gauges";
 
-const CONFIG_API = import.meta.env.VITE_GOPRO_API_URL ?? "http://localhost:3001";
+const CONFIG_API = import.meta.env.VITE_GOPRO_API_URL ?? "";
 
 export function useConfig() {
   const [config, setConfig] = useState<AppConfig>(defaultAppConfig);
