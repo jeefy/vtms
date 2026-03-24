@@ -26,29 +26,52 @@ All MicroPython devices share these modules, copied to each device at flash time
 
 ## Flash Workflow
 
-### 1. Install MicroPython (one-time per board)
+### Prerequisites
 
 ```bash
 pip install esptool mpremote
-make flash-micropython
-# Follow the printed instructions (erase flash, write firmware)
 ```
 
-### 2. Install MQTT library (one-time per board)
+### From scratch (blank chip → running device)
+
+One command does everything — downloads MicroPython firmware, erases flash, writes firmware, installs `umqtt.robust`, generates secrets, copies device files, and resets:
 
 ```bash
-mpremote mip install umqtt.robust
+make flash-fresh-analog-sensors
+make flash-fresh-thermoprobe
+make flash-fresh-temp-sensor
+make flash-fresh-led-controller
 ```
 
-### 3. Flash a device
+To target a specific serial port (default is auto-detect):
 
-Each target copies `common/` modules + device-specific files to the ESP32 via `mpremote`, then resets the board:
+```bash
+make flash-fresh-analog-sensors ESP_PORT=/dev/ttyUSB1
+```
+
+### Flash device code only (MicroPython already installed)
+
+If the board already has MicroPython and `umqtt.robust`, just flash the application code:
 
 ```bash
 make flash-analog-sensors
 make flash-thermoprobe
 make flash-temp-sensor
 make flash-led-controller
+```
+
+### Flash MicroPython firmware only
+
+Downloads the firmware (cached in `.cache/`), erases flash, writes firmware, and installs `umqtt.robust`:
+
+```bash
+make flash-micropython
+```
+
+Override the MicroPython version:
+
+```bash
+make flash-micropython MICROPYTHON_VERSION=v1.24.1
 ```
 
 `canbus_gauge` is flashed separately through Arduino IDE. See [canbus_gauge/README.md](canbus_gauge/README.md) for setup.

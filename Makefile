@@ -108,6 +108,20 @@ lint: client-lint sdr-lint
 # ── ESP32 MicroPython Devices ──────────────────────────
 .PHONY: esp32-test flash-micropython monitor-esp32
 .PHONY: flash-analog-sensors flash-thermoprobe flash-temp-sensor flash-led-controller
+.PHONY: flash-fresh-analog-sensors flash-fresh-thermoprobe flash-fresh-temp-sensor flash-fresh-led-controller
+
+MICROPYTHON_VERSION ?= v1.25.0
+MICROPYTHON_FW     := .cache/ESP32_GENERIC-$(MICROPYTHON_VERSION).bin
+ESP_PORT           ?= auto
+
+# When ESP_PORT is "auto", let mpremote auto-detect; otherwise connect explicitly.
+ifeq ($(ESP_PORT),auto)
+  MPREMOTE       := mpremote
+  ESPTOOL_PORT   :=
+else
+  MPREMOTE       := mpremote connect $(ESP_PORT)
+  ESPTOOL_PORT   := --port $(ESP_PORT)
+endif
 
 # ── OTA Server ─────────────────────────────────────────
 .PHONY: ota-test
@@ -122,12 +136,17 @@ esp32-test:
 	cd arduino/temp_sensor && python -m pytest tests/ -v
 	cd arduino/led_controller && python -m pytest tests/ -v
 
-flash-micropython:
-	@echo "1. Download firmware from https://micropython.org/download/ESP32_GENERIC/"
-	@echo "2. pip install esptool mpremote"
-	@echo "3. esptool.py --chip esp32 erase_flash"
-	@echo "4. esptool.py --chip esp32 write_flash -z 0x1000 <firmware.bin>"
+# ── Firmware download & initial flash ─────────────────
+$(MICROPYTHON_FW):
+	@mkdir -p .cache
+	curl -fSL -o $@ https://micropython.org/resources/firmware/ESP32_GENERIC-$(MICROPYTHON_VERSION).bin
 
+flash-micropython: $(MICROPYTHON_FW)
+	esptool.py --chip esp32 $(ESPTOOL_PORT) erase_flash
+	esptool.py --chip esp32 $(ESPTOOL_PORT) write_flash -z 0x1000 $(MICROPYTHON_FW)
+	$(MPREMOTE) mip install umqtt.robust
+
+# ── Secrets generation ────────────────────────────────
 generate-secrets: .env ## Generate secrets files for Arduino/MicroPython from .env
 	@echo "Generating arduino/common/secrets.py from .env …"
 	@. ./.env && printf '"""Device secrets — generated from .env, do NOT commit."""\n\nWIFI_NETWORKS = [\n    ("%s", "%s"),\n    ("%s", "%s"),\n]\n\nMQTT_BROKER = "%s"\nMQTT_PORT = %s\nOTA_SERVER = "%s"\n' \
@@ -141,47 +160,52 @@ generate-secrets: .env ## Generate secrets files for Arduino/MicroPython from .e
 		> arduino/arduino_secrets.h
 	@echo "Done.  Files are gitignored — do not commit them."
 
+# ── Stage & flash helpers ─────────────────────────────
+# Usage: $(call stage-common) copies shared modules into .flash-stage/
+define stage-common
+	@rm -rf .flash-stage && mkdir -p .flash-stage
+	@cp arduino/common/boot.py arduino/common/mqtt_client.py \
+	    arduino/common/ota_update.py arduino/common/secrets.py \
+	    .flash-stage/
+endef
+
+# Copies staged files to device, resets, and cleans up
+define flash-staged
+	$(MPREMOTE) cp -r .flash-stage/ : + reset
+	@rm -rf .flash-stage
+endef
+
 flash-analog-sensors: generate-secrets
-	mpremote cp arduino/common/boot.py :boot.py
-	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
-	mpremote cp arduino/common/adc_utils.py :adc_utils.py
-	mpremote cp arduino/common/ota_update.py :ota_update.py
-	mpremote cp arduino/common/secrets.py :secrets.py
-	mpremote cp arduino/analog_sensors/config.py :config.py
-	mpremote cp arduino/analog_sensors/sensors.py :sensors.py
-	mpremote cp arduino/analog_sensors/main.py :main.py
-	mpremote reset
+	$(call stage-common)
+	@cp arduino/common/adc_utils.py .flash-stage/
+	@cp arduino/analog_sensors/config.py arduino/analog_sensors/sensors.py \
+	    arduino/analog_sensors/main.py .flash-stage/
+	$(call flash-staged)
 
 flash-thermoprobe: generate-secrets
-	mpremote cp arduino/common/boot.py :boot.py
-	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
-	mpremote cp arduino/common/ota_update.py :ota_update.py
-	mpremote cp arduino/common/secrets.py :secrets.py
-	mpremote cp arduino/thermoprobe/config.py :config.py
-	mpremote cp arduino/thermoprobe/max6675.py :max6675.py
-	mpremote cp arduino/thermoprobe/main.py :main.py
-	mpremote reset
+	$(call stage-common)
+	@cp arduino/thermoprobe/config.py arduino/thermoprobe/max6675.py \
+	    arduino/thermoprobe/main.py .flash-stage/
+	$(call flash-staged)
 
 flash-temp-sensor: generate-secrets
-	mpremote cp arduino/common/boot.py :boot.py
-	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
-	mpremote cp arduino/common/adc_utils.py :adc_utils.py
-	mpremote cp arduino/common/ota_update.py :ota_update.py
-	mpremote cp arduino/common/secrets.py :secrets.py
-	mpremote cp arduino/temp_sensor/config.py :config.py
-	mpremote cp arduino/temp_sensor/sensors.py :sensors.py
-	mpremote cp arduino/temp_sensor/main.py :main.py
-	mpremote reset
+	$(call stage-common)
+	@cp arduino/common/adc_utils.py .flash-stage/
+	@cp arduino/temp_sensor/config.py arduino/temp_sensor/sensors.py \
+	    arduino/temp_sensor/main.py .flash-stage/
+	$(call flash-staged)
 
 flash-led-controller: generate-secrets
-	mpremote cp arduino/common/boot.py :boot.py
-	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
-	mpremote cp arduino/common/ota_update.py :ota_update.py
-	mpremote cp arduino/common/secrets.py :secrets.py
-	mpremote cp arduino/led_controller/config.py :config.py
-	mpremote cp arduino/led_controller/led_logic.py :led_logic.py
-	mpremote cp arduino/led_controller/main.py :main.py
-	mpremote reset
+	$(call stage-common)
+	@cp arduino/led_controller/config.py arduino/led_controller/led_logic.py \
+	    arduino/led_controller/main.py .flash-stage/
+	$(call flash-staged)
+
+# ── From-scratch targets (blank chip → running device) ─
+flash-fresh-analog-sensors: flash-micropython flash-analog-sensors
+flash-fresh-thermoprobe:    flash-micropython flash-thermoprobe
+flash-fresh-temp-sensor:    flash-micropython flash-temp-sensor
+flash-fresh-led-controller: flash-micropython flash-led-controller
 
 monitor-esp32:
-	mpremote connect auto repl
+	$(MPREMOTE) repl

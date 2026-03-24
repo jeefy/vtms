@@ -215,3 +215,7 @@ web/playwright-report/
 # Generated secrets (from .env)
 arduino/common/secrets.py
 arduino/arduino_secrets.h
+
+# ESP32 flash workflow
+.cache/
+.flash-stage/
