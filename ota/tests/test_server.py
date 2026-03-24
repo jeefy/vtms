@@ -168,3 +168,95 @@ class TestBuildManifests:
         assert "files" in m
         assert "device_type" in m
         assert m["device_type"] == "device_a"
+
+
+class TestPathTraversal:
+    """Test that path traversal via device_type and filename is blocked."""
+
+    def setup_method(self):
+        self.tmpdir = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self.tmpdir, "common"))
+        os.makedirs(os.path.join(self.tmpdir, "test_device"))
+        with open(os.path.join(self.tmpdir, "test_device", "main.py"), "w") as f:
+            f.write("ok")
+
+    def teardown_method(self):
+        shutil.rmtree(self.tmpdir)
+
+    def test_resolve_file_rejects_dotdot_device_type(self):
+        from server import resolve_file
+
+        with pytest.raises(ValueError):
+            resolve_file(self.tmpdir, "..", "main.py")
+
+    def test_resolve_file_rejects_slash_device_type(self):
+        from server import resolve_file
+
+        with pytest.raises(ValueError):
+            resolve_file(self.tmpdir, "foo/bar", "main.py")
+
+    def test_resolve_file_rejects_dotdot_filename(self):
+        from server import resolve_file
+
+        with pytest.raises(ValueError):
+            resolve_file(self.tmpdir, "test_device", "../etc/passwd")
+
+    def test_get_device_files_rejects_dotdot(self):
+        from server import get_device_files
+
+        with pytest.raises(ValueError):
+            get_device_files(self.tmpdir, "..")
+
+    def test_get_device_files_rejects_slash(self):
+        from server import get_device_files
+
+        with pytest.raises(ValueError):
+            get_device_files(self.tmpdir, "../etc")
+
+    def test_handle_manifest_returns_400_for_invalid_device_type(self):
+        from server import OTAHandler
+        import io
+        from http.server import HTTPServer
+        from unittest.mock import MagicMock
+
+        handler = object.__new__(OTAHandler)
+        handler.wfile = io.BytesIO()
+        handler._headers_buffer = []
+        handler.request_version = "HTTP/1.1"
+        handler.requestline = "GET /manifest/.. HTTP/1.1"
+        handler.responses = OTAHandler.responses
+        handler.manifests = {}
+        handler.firmware_dir = self.tmpdir
+
+        handler._handle_manifest("..")
+        handler.wfile.seek(0)
+        response = handler.wfile.read().decode()
+        assert "400" in response
+        assert "invalid device type" in response
+
+    def test_handle_file_returns_400_for_invalid_device_type(self):
+        from server import OTAHandler
+        import io
+
+        handler = object.__new__(OTAHandler)
+        handler.wfile = io.BytesIO()
+        handler._headers_buffer = []
+        handler.request_version = "HTTP/1.1"
+        handler.requestline = "GET /files/../main.py HTTP/1.1"
+        handler.responses = OTAHandler.responses
+        handler.manifests = {}
+        handler.firmware_dir = self.tmpdir
+
+        handler._handle_file("..", "main.py")
+        handler.wfile.seek(0)
+        response = handler.wfile.read().decode()
+        assert "400" in response
+        assert "invalid device type" in response
+
+    def test_valid_device_type_accepted(self):
+        from server import _validate_device_type
+
+        # Should not raise for valid names
+        _validate_device_type("test_device")
+        _validate_device_type("esp32-sensor")
+        _validate_device_type("DeviceA123")

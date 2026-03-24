@@ -7,6 +7,7 @@ Publishes hash announcements over MQTT.
 import hashlib
 import json
 import os
+import re
 import threading
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -18,13 +19,21 @@ HTTP_PORT = int(os.environ.get("HTTP_PORT", "8266"))
 ANNOUNCE_INTERVAL = int(os.environ.get("ANNOUNCE_INTERVAL", "60"))
 
 COMMON_DIR = "common"
+DEVICE_TYPE_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 
 # ── Pure functions (testable without dependencies) ─────────
 
 
+def _validate_device_type(device_type):
+    """Reject device_type values that could escape the firmware directory."""
+    if not DEVICE_TYPE_RE.match(device_type):
+        raise ValueError(f"invalid device_type: {device_type!r}")
+
+
 def get_device_files(firmware_dir, device_type):
     """Get sorted, deduplicated list of .py files for a device type."""
+    _validate_device_type(device_type)
     files = set()
     common_path = os.path.join(firmware_dir, COMMON_DIR)
     if os.path.isdir(common_path):
@@ -41,6 +50,9 @@ def get_device_files(firmware_dir, device_type):
 
 def resolve_file(firmware_dir, device_type, filename):
     """Resolve filename to path (device dir first, then common)."""
+    _validate_device_type(device_type)
+    if ".." in filename or "/" in filename:
+        raise ValueError(f"invalid filename: {filename!r}")
     device_path = os.path.join(firmware_dir, device_type, filename)
     if os.path.isfile(device_path):
         return device_path
@@ -96,12 +108,22 @@ class OTAHandler(BaseHTTPRequestHandler):
             self._json_response(404, {"error": "not found"})
 
     def _handle_manifest(self, device_type):
+        try:
+            _validate_device_type(device_type)
+        except ValueError:
+            self._json_response(400, {"error": "invalid device type"})
+            return
         if device_type in self.manifests:
             self._json_response(200, self.manifests[device_type])
         else:
             self._json_response(404, {"error": "unknown device type"})
 
     def _handle_file(self, device_type, filename):
+        try:
+            _validate_device_type(device_type)
+        except ValueError:
+            self._json_response(400, {"error": "invalid device type"})
+            return
         if ".." in filename or "/" in filename:
             self._json_response(400, {"error": "invalid filename"})
             return
