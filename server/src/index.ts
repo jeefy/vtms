@@ -129,3 +129,14 @@ process.on("SIGINT", () => {
   streamManager.destroy();
   process.exit(0);
 });
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception:", err);
+  keepAlive.stop();
+  streamManager.destroy();
+  process.exit(1);
+});
