@@ -53,7 +53,7 @@ OIL_MAX_PSI = 150.0  # max pressure rating of Greddy sender
 EMA_ALPHA = 0.3  # weight for new readings (0-1, higher = less smoothing)
 
 # Timing
-POLL_INTERVAL = 2  # seconds between sensor reads
+POLL_INTERVAL = 1  # seconds between sensor reads
 
 # Debug mode (publishes raw voltages for calibration)
 DEBUG = False
