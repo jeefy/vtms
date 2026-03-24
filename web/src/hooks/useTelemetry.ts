@@ -63,30 +63,40 @@ export function useTelemetry(mqttConfig: MqttConfig) {
       setGps((prev) => {
         const next = { ...prev, timestamp: now };
         switch (field) {
-          case "latitude":
-            next.latitude = parseFloat(payload);
+          case "latitude": {
+            const v = parseFloat(payload);
+            if (!isNaN(v)) next.latitude = v;
             break;
-          case "longitude":
-            next.longitude = parseFloat(payload);
+          }
+          case "longitude": {
+            const v = parseFloat(payload);
+            if (!isNaN(v)) next.longitude = v;
             break;
-          case "altitude":
-            next.altitude = parseFloat(payload);
+          }
+          case "altitude": {
+            const v = parseFloat(payload);
+            if (!isNaN(v)) next.altitude = v;
             break;
-          case "speed":
-            next.speed = parseFloat(payload);
+          }
+          case "speed": {
+            const v = parseFloat(payload);
+            if (!isNaN(v)) next.speed = v;
             break;
-          case "track":
-            next.track = parseFloat(payload);
+          }
+          case "track": {
+            const v = parseFloat(payload);
+            if (!isNaN(v)) next.track = v;
             break;
+          }
           case "geohash":
             next.geohash = payload;
             break;
           case "pos": {
             const [lat, lon] = payload.split(",").map(Number);
-            next.latitude = lat;
-            next.longitude = lon;
-            // Update trail
             if (!isNaN(lat) && !isNaN(lon)) {
+              next.latitude = lat;
+              next.longitude = lon;
+              // Update trail
               const newTrail = [...trailRef.current, [lat, lon] as [number, number]];
               if (newTrail.length > TRAIL_MAX_LENGTH) {
                 newTrail.splice(0, newTrail.length - TRAIL_MAX_LENGTH);
@@ -113,6 +123,16 @@ export function useTelemetry(mqttConfig: MqttConfig) {
         const filtered = prev.filter((d) => d.code !== code);
         return [...filtered, { code, description: payload, timestamp: now }];
       });
+      return;
+    }
+
+    // Skip SDR topics — handled by useSDR hook
+    if (topic.startsWith(`${prefix}sdr/`)) {
+      return;
+    }
+
+    // Skip status request/response topics
+    if (topic.startsWith(`${prefix}status/`)) {
       return;
     }
 
