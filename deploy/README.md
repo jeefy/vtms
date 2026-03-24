@@ -64,7 +64,7 @@ Applied to both Pis. Installs baseline infrastructure:
 - Enables Cockpit (web admin on port 9090)
 - Installs Docker via `get.docker.com`, adds `car` to the docker group, installs the Compose plugin
 - Configures Docker to trust the insecure registry at `192.168.50.46:5000`
-- Installs Tailscale and brings it up with the provided auth key, using `100.90.165.127` as the exit node
+- Installs Tailscale, authenticates with the provided auth key, and configures Archives (`100.90.165.127`) as the exit node via `tailscale set`
 - Creates `/opt/vtms` as the compose project directory
 
 ### car_pi
@@ -132,7 +132,7 @@ Watchtower on each Pi polls the registry every 120 seconds and pulls updated ima
 |----------|-------|-------------|
 | `registry` | `192.168.50.46:5000` | Docker image registry |
 | `tailscale_auth_key` | `$TAILSCALE_AUTH_KEY` | Looked up from environment |
-| `tailscale_exit_node` | `100.90.165.127` | Tailscale exit node IP |
+| `tailscale_exit_node` | `100.90.165.127` | Tailscale exit node IP (Archives) |
 | `mqtt_server` | `192.168.50.24` | MQTT broker address |
 | `mqtt_port` | `1883` | MQTT broker port |
 | `compose_dir` | `/opt/vtms` | Docker Compose project path on Pi |

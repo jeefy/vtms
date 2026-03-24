@@ -11,7 +11,6 @@
       - gnupg
       - apt-transport-https
       - ca-certificates
-      - arping
       - cockpit
     state: present
 
@@ -76,16 +75,29 @@
     creates: /usr/bin/tailscale
   when: tailscale_check.rc != 0
 
+- name: Check Tailscale connection status
+  ansible.builtin.command: tailscale status --self --json
+  register: tailscale_status
+  changed_when: false
+  ignore_errors: yes
+
 - name: Bring up Tailscale
   ansible.builtin.command: >
     tailscale up
-    --accept-routes
-    --exit-node={{ tailscale_exit_node }}
-    --exit-node-allow-lan-access=true
     --auth-key={{ tailscale_auth_key }}
     --hostname={{ inventory_hostname }}
   register: tailscale_up
-  changed_when: "'Success' in tailscale_up.stdout"
+  changed_when: tailscale_up.rc == 0
+  when: >
+    tailscale_status.rc != 0 or
+    (tailscale_status.stdout | from_json).BackendState != 'Running'
+
+- name: Set Tailscale exit node to Archives
+  ansible.builtin.command: >
+    tailscale set
+    --accept-routes
+    --exit-node={{ tailscale_exit_node }}
+    --exit-node-allow-lan-access=true
 
 # ── Static route for registry subnet ──────────────────
 # When on the same LAN as the registry and using a Tailscale exit node,

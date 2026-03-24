@@ -2,7 +2,7 @@
 # Common settings for all Pis
 registry: "192.168.50.46:5000"
 tailscale_auth_key: "{{ lookup('env', 'TAILSCALE_AUTH_KEY') }}"
-tailscale_exit_node: "100.90.165.127"
+tailscale_exit_node: "100.90.165.127"  # archives
 
 mqtt_server: "192.168.50.24"
 mqtt_port: 1883
