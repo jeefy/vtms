@@ -49,6 +49,8 @@ def main():
             print("MQTT connect failed:", e)
             time.sleep(5)
 
+    mqtt_client.publish_firmware_hash(mqtt)
+
     # Hardware watchdog — resets ESP32 if main loop hangs
     try:
         from machine import WDT
@@ -81,6 +83,9 @@ def main():
                     print("MQTT reconnect failed:", e)
                     time.sleep_ms(POLL_INTERVAL_MS)
                     continue
+
+            # Process any pending status requests
+            mqtt.check_msg()
 
             # Read ADC and convert to voltage
             raw = temp_adc.read()

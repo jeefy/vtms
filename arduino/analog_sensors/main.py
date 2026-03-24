@@ -76,6 +76,8 @@ def main():
             print("MQTT connect failed:", e)
             time.sleep(5)
 
+    mqtt_client.publish_firmware_hash(mqtt)
+
     # Smoothed values (None = first reading)
     fuel_smoothed = None
     oil_smoothed = None
@@ -113,6 +115,9 @@ def main():
                     print("MQTT reconnect failed:", e)
                     time.sleep(POLL_INTERVAL)
                     continue
+
+            # Process any pending status requests
+            mqtt.check_msg()
 
             # Read ADC (voltage after HiLetgo 5:1 divider)
             fuel_raw = fuel_adc.read()
