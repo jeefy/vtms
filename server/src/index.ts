@@ -20,10 +20,22 @@ const keepAlive = new KeepAliveService();
 
 // ── CORS (allow Vite dev server) ──────────────────────
 
-app.use((_req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
+const ALLOWED_ORIGINS = new Set([
+  `http://localhost:${PORT}`,
+  `http://localhost:5173`, // Vite dev
+]);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
+  }
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
   next();
 });
 
