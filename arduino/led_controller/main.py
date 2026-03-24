@@ -60,13 +60,15 @@ def main():
     mqtt = None
     while mqtt is None:
         try:
-            mqtt = mqtt_client.connect()
+            mqtt = mqtt_client.connect(user_callback=_mqtt_callback)
             for topic in MQTT_SUBSCRIBE_TOPICS:
-                mqtt_client.subscribe(mqtt, topic, _mqtt_callback)
+                mqtt_client.subscribe_topic(mqtt, topic)
         except Exception as e:
             print("MQTT connect failed:", e)
             mqtt = None
             time.sleep(5)
+
+    mqtt_client.publish_firmware_hash(mqtt)
 
     # Hardware watchdog — resets ESP32 if main loop hangs
     try:
@@ -83,9 +85,9 @@ def main():
             # Reconnect MQTT if needed
             if mqtt is None:
                 try:
-                    mqtt = mqtt_client.connect()
+                    mqtt = mqtt_client.connect(user_callback=_mqtt_callback)
                     for topic in MQTT_SUBSCRIBE_TOPICS:
-                        mqtt_client.subscribe(mqtt, topic, _mqtt_callback)
+                        mqtt_client.subscribe_topic(mqtt, topic)
                 except Exception:
                     print("MQTT reconnect failed, will retry")
                     time.sleep(5)
@@ -97,9 +99,9 @@ def main():
                 print("WiFi: disconnected, reconnecting...")
                 connect_wifi()
                 try:
-                    mqtt = mqtt_client.connect()
+                    mqtt = mqtt_client.connect(user_callback=_mqtt_callback)
                     for topic in MQTT_SUBSCRIBE_TOPICS:
-                        mqtt_client.subscribe(mqtt, topic, _mqtt_callback)
+                        mqtt_client.subscribe_topic(mqtt, topic)
                 except Exception as e:
                     print("MQTT reconnect failed:", e)
                     time.sleep(1)
@@ -122,9 +124,9 @@ def main():
             mqtt = None
             time.sleep(5)
             try:
-                mqtt = mqtt_client.connect()
+                mqtt = mqtt_client.connect(user_callback=_mqtt_callback)
                 for topic in MQTT_SUBSCRIBE_TOPICS:
-                    mqtt_client.subscribe(mqtt, topic, _mqtt_callback)
+                    mqtt_client.subscribe_topic(mqtt, topic)
             except Exception:
                 print("MQTT reconnect failed, will retry next loop")
 
