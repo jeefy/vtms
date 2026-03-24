@@ -213,6 +213,12 @@ def main(ctx, verbose):
     show_default=True,
     help="MQTT topic prefix for SDR state/control messages.",
 )
+@click.option(
+    "--audio-ws-port",
+    type=int,
+    default=None,
+    help="WebSocket port for live audio streaming (e.g. 9003).",
+)
 def record(
     freq,
     mod,
@@ -236,6 +242,7 @@ def record(
     dcs_code,
     mqtt_broker,
     mqtt_prefix,
+    audio_ws_port,
 ):
     """Record audio from a frequency.
 
@@ -425,6 +432,14 @@ def record(
             )
             mqtt_bridge.start()
 
+        # Set up optional audio WebSocket server
+        audio_ws_server = None
+        if audio_ws_port is not None:
+            from .audio_ws import AudioWSServer
+
+            audio_ws_server = AudioWSServer(port=audio_ws_port)
+            audio_ws_server.start()
+
         config = RecordConfig(
             freq=freq,
             mod=mod,
@@ -441,6 +456,7 @@ def record(
             label=label,
             dcs_code=dcs_code,
             state_manager=state_manager,
+            audio_ws=audio_ws_server,
         )
         stats = RecordingSession(config).run()
 
@@ -463,6 +479,8 @@ def record(
         click.echo(f"Unexpected error: {e}", err=True)
         sys.exit(1)
     finally:
+        if audio_ws_server is not None:
+            audio_ws_server.stop()
         if mqtt_bridge is not None:
             mqtt_bridge.stop()
 

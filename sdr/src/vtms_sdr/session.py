@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 from .utils import format_frequency, iq_power_db
 
 if TYPE_CHECKING:
+    from .audio_ws import AudioWSServer
     from .demod import Demodulator
     from .monitor import AudioMonitor, MonitorUI
     from .recorder import AudioRecorder
@@ -47,6 +48,7 @@ class RecordConfig:
     label: str | None = None
     dcs_code: int | None = None
     state_manager: StateManager | None = None
+    audio_ws: AudioWSServer | None = None
 
 
 class RecordingSession:
@@ -100,6 +102,9 @@ class RecordingSession:
                         if sm is not None:
                             sm.update("signal_power", float(iq_pwr))
                         audio = demod_holder[0].demodulate(iq_block)
+                        # Broadcast audio via WebSocket
+                        if cfg.audio_ws is not None:
+                            cfg.audio_ws.broadcast(audio.tobytes())
                         # Include pre-HP audio if the demodulator provides it
                         pre_hp = getattr(demod_holder[0], "pre_hp_audio", None)
                         if pre_hp is not None:
