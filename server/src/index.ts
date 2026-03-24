@@ -18,7 +18,7 @@ const HOST = process.env.HOST ?? "0.0.0.0";
 const streamManager = new StreamManager();
 const keepAlive = new KeepAliveService();
 
-// ── CORS (allow Vite dev server) ──────────────────────
+// ── CORS (allow Vite dev server + same-origin) ───────
 
 const ALLOWED_ORIGINS = new Set([
   `http://localhost:${PORT}`,
@@ -27,10 +27,15 @@ const ALLOWED_ORIGINS = new Set([
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin && ALLOWED_ORIGINS.has(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type");
+  if (origin) {
+    // Allow configured origins + any request where origin matches the Host header
+    // (same-origin requests from the served frontend)
+    const hostOrigin = `${req.protocol}://${req.headers.host}`;
+    if (ALLOWED_ORIGINS.has(origin) || origin === hostOrigin) {
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+      res.header("Access-Control-Allow-Headers", "Content-Type");
+    }
   }
   if (req.method === "OPTIONS") {
     res.sendStatus(204);
@@ -39,7 +44,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 
 // ── Routes ────────────────────────────────────────────
 
