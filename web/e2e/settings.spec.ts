@@ -14,6 +14,7 @@ import type { AppConfig } from "../src/types/config";
 const mockConfig: AppConfig = {
   mqtt: { url: "ws://localhost:9001", topicPrefix: "lemons/" },
   gopro: { apiUrl: "http://localhost:3001", streamWsUrl: "ws://localhost:9002" },
+  sdr: { audioWsUrl: "ws://localhost:9003" },
   gauges: [
     { id: "rpm", topic: "lemons/RPM", label: "RPM", min: 0, max: 8000, unit: "rpm" },
     { id: "speed", topic: "lemons/SPEED", label: "Speed", min: 0, max: 200, unit: "km/h" },

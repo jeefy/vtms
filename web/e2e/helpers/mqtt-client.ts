@@ -65,6 +65,11 @@ export class MqttTestClient {
     return this.publish(`lemons/DTC/${code}`, description);
   }
 
+  /** Publish an SDR state value (e.g. freq, status, signal_power). */
+  async publishSDRState(key: string, value: string | number): Promise<void> {
+    return this.publish(`lemons/sdr/state/${key}`, String(value));
+  }
+
   /** Disconnect from the broker. */
   async disconnect(): Promise<void> {
     if (!this.client) return;

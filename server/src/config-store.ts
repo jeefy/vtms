@@ -26,6 +26,7 @@ export interface GaugeConfigEntry {
 export interface AppConfig {
   mqtt: { url: string; topicPrefix: string };
   gopro: { apiUrl: string; streamWsUrl: string };
+  sdr: { audioWsUrl: string };
   gauges: GaugeConfigEntry[];
 }
 
@@ -37,6 +38,9 @@ const DEFAULT_CONFIG: AppConfig = {
   gopro: {
     apiUrl: "http://localhost:3001",
     streamWsUrl: "ws://localhost:9002",
+  },
+  sdr: {
+    audioWsUrl: "ws://localhost:9003",
   },
   gauges: [
     {
@@ -95,7 +99,8 @@ export async function loadConfig(): Promise<AppConfig> {
     const raw = await readFile(CONFIG_PATH, "utf-8");
     const parsed = JSON.parse(raw);
     validateConfig(parsed);
-    return parsed;
+    // Merge with defaults so new fields (e.g. sdr) are present
+    return { ...structuredClone(DEFAULT_CONFIG), ...parsed };
   } catch {
     console.warn("Failed to load config, using defaults");
     return structuredClone(DEFAULT_CONFIG);
@@ -122,6 +127,13 @@ function validateConfig(config: unknown): asserts config is AppConfig {
   if (!c.mqtt || typeof c.mqtt !== "object") throw new Error("Missing mqtt config");
   if (!c.gopro || typeof c.gopro !== "object") throw new Error("Missing gopro config");
   if (!Array.isArray(c.gauges)) throw new Error("gauges must be an array");
+
+  // SDR config is optional for backward compatibility with saved configs
+  if (c.sdr !== undefined) {
+    if (typeof c.sdr !== "object" || c.sdr === null) throw new Error("sdr must be an object");
+    const sdr = c.sdr as Record<string, unknown>;
+    if (typeof sdr.audioWsUrl !== "string") throw new Error("sdr.audioWsUrl must be a string");
+  }
 
   const mqtt = c.mqtt as Record<string, unknown>;
   if (typeof mqtt.url !== "string") throw new Error("mqtt.url must be a string");
