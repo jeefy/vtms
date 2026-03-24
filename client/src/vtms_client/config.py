@@ -12,9 +12,15 @@ class Config:
     """Configuration for VTMS settings"""
 
     debug: bool = False
-    mqtt_server: str = "192.168.50.24"
-    mqtt_port: int = 1883
-    mqtt_keepalive: int = 60
+    mqtt_server: str = field(
+        default_factory=lambda: os.environ.get("MQTT_SERVER", "192.168.50.24")
+    )
+    mqtt_port: int = field(
+        default_factory=lambda: int(os.environ.get("MQTT_PORT", "1883"))
+    )
+    mqtt_keepalive: int = field(
+        default_factory=lambda: int(os.environ.get("MQTT_KEEPALIVE", "60"))
+    )
     obd_retry_delay: int = 15
     gps_update_interval: int = 1
     gps_port: Optional[str] = None
