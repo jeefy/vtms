@@ -4,9 +4,9 @@ all:
       hosts:
         car-pi:
           # Set to actual Tailscale IP or MagicDNS hostname after first setup
-          ansible_host: car-pi
+          ansible_host: car-pi.taildc7e6.ts.net
     base_pi:
       hosts:
         base-pi:
           # Set to actual Tailscale IP or MagicDNS hostname after first setup
-          ansible_host: base-pi
+          ansible_host: base-pi.taildc7e6.ts.net

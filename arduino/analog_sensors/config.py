@@ -2,16 +2,17 @@
 
 # WiFi networks — loaded from generated secrets module (see .env)
 try:
-    from secrets import WIFI_NETWORKS
+    from secrets import WIFI_NETWORKS, MQTT_BROKER, MQTT_PORT, OTA_SERVER
 except ImportError:
     print("ERROR: secrets.py missing — run 'make generate-secrets'")
     WIFI_NETWORKS = []
+    MQTT_BROKER = "192.168.50.24"
+    MQTT_PORT = 1883
+    OTA_SERVER = "10.42.0.1:8266"
 
 WIFI_CONNECT_TIMEOUT = 15  # seconds per SSID attempt
 
 # MQTT
-MQTT_BROKER = "192.168.50.24"
-MQTT_PORT = 1883
 MQTT_CLIENT_PREFIX = "esp32-analog"
 MQTT_TOPIC_PREFIX = "lemons/analog"
 
@@ -43,8 +44,7 @@ EMA_ALPHA = 0.3  # weight for new readings (0-1, higher = less smoothing)
 POLL_INTERVAL = 2  # seconds between sensor reads
 
 # Debug mode (publishes raw voltages for calibration)
-DEBUG = True
+DEBUG = False
 
 # OTA
 DEVICE_TYPE = "analog_sensors"
-OTA_SERVER = "10.42.0.1:8266"

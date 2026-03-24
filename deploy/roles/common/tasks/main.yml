@@ -3,7 +3,6 @@
   ansible.builtin.apt:
     update_cache: yes
     cache_valid_time: 3600
-  become: yes
 
 - name: Install prerequisite packages
   ansible.builtin.apt:
@@ -12,16 +11,15 @@
       - gnupg
       - apt-transport-https
       - ca-certificates
+      - arping
       - cockpit
     state: present
-  become: yes
 
 - name: Enable Cockpit
   ansible.builtin.systemd:
     name: cockpit.socket
     enabled: yes
     state: started
-  become: yes
 
 # ── Docker ──────────────────────────────────────────────
 - name: Check if Docker is installed
@@ -35,27 +33,23 @@
   args:
     creates: /usr/bin/docker
   when: docker_check.rc != 0
-  become: yes
 
-- name: Add pi user to docker group
+- name: Add car user to docker group
   ansible.builtin.user:
-    name: pi
+    name: car
     groups: docker
     append: yes
-  become: yes
 
 - name: Install Docker Compose plugin
   ansible.builtin.apt:
     name: docker-compose-plugin
     state: present
-  become: yes
 
 - name: Configure Docker daemon (insecure registry)
   ansible.builtin.template:
     src: daemon.json.j2
     dest: /etc/docker/daemon.json
     mode: "0644"
-  become: yes
   notify: Restart Docker
 
 - name: Ensure Docker is running
@@ -63,7 +57,11 @@
     name: docker
     enabled: yes
     state: started
-  become: yes
+
+# Flush now so Docker restarts (if daemon.json changed) before
+# role-specific tasks try to pull images.
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
 
 # ── Tailscale ───────────────────────────────────────────
 - name: Check if Tailscale is installed
@@ -77,7 +75,6 @@
   args:
     creates: /usr/bin/tailscale
   when: tailscale_check.rc != 0
-  become: yes
 
 - name: Bring up Tailscale
   ansible.builtin.command: >
@@ -87,16 +84,30 @@
     --exit-node-allow-lan-access=true
     --auth-key={{ tailscale_auth_key }}
     --hostname={{ inventory_hostname }}
-  become: yes
   register: tailscale_up
-  changed_when: "'Success' in tailscale_up.stdout or tailscale_up.rc == 0"
+  changed_when: "'Success' in tailscale_up.stdout"
+
+# ── Static route for registry subnet ──────────────────
+# When on the same LAN as the registry and using a Tailscale exit node,
+# traffic to the registry subnet routes via the tunnel instead of the
+# local LAN. Detect L2 reachability with arping and add a direct route
+# only when the registry is actually on this segment.
+- name: Check if registry is on local LAN
+  ansible.builtin.command: arping -c 1 -w 2 -I eth0 {{ registry.split(':')[0] }}
+  register: registry_arping
+  ignore_errors: yes
+  changed_when: false
+
+- name: Add static route for registry subnet
+  ansible.builtin.command: ip route replace 192.168.50.0/24 dev eth0
+  changed_when: false
+  when: registry_arping.rc == 0
 
 # ── Compose directory ──────────────────────────────────
 - name: Create compose directory
   ansible.builtin.file:
     path: "{{ compose_dir }}"
     state: directory
-    owner: pi
-    group: pi
+    owner: car
+    group: car
     mode: "0755"
-  become: yes

@@ -24,8 +24,12 @@ def _client_id():
 
 def connect():
     """Create and connect an MQTT client. Returns the client instance."""
+    if MQTTClient is None:
+        raise RuntimeError(
+            "umqtt.robust not installed — flash micropython-umqtt.robust"
+        )
     client_id = _client_id()
-    client = MQTTClient(client_id, MQTT_BROKER, port=MQTT_PORT)
+    client = MQTTClient(client_id, MQTT_BROKER, port=MQTT_PORT, keepalive=60)
 
     print("MQTT: connecting as", client_id, "to", MQTT_BROKER)
     client.connect()
@@ -45,6 +49,9 @@ def publish(client, topic, value):
 
 def subscribe(client, topic, callback):
     """Subscribe to an MQTT topic with a message callback.
+
+    WARNING: umqtt supports only one global callback. Calling subscribe()
+    again with a different callback replaces the previous one.
 
     callback signature: callback(topic_bytes, msg_bytes)
     """

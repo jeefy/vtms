@@ -13,7 +13,7 @@ except ImportError:
     Pin = None
     reset = None
 
-from config import LED_PINS, MQTT_SUBSCRIBE_TOPIC
+from config import LED_PINS, MQTT_SUBSCRIBE_TOPICS
 from led_logic import parse_led_value, topic_to_pin
 import mqtt_client
 from boot import connect_wifi
@@ -61,16 +61,36 @@ def main():
     while mqtt is None:
         try:
             mqtt = mqtt_client.connect()
-            mqtt_client.subscribe(mqtt, MQTT_SUBSCRIBE_TOPIC, _mqtt_callback)
+            for topic in MQTT_SUBSCRIBE_TOPICS:
+                mqtt_client.subscribe(mqtt, topic, _mqtt_callback)
         except Exception as e:
             print("MQTT connect failed:", e)
             mqtt = None
             time.sleep(5)
 
+    # Hardware watchdog — resets ESP32 if main loop hangs
+    try:
+        from machine import WDT
+
+        wdt = WDT(timeout=30000)  # 30 second timeout
+    except (ImportError, Exception):
+        wdt = None
+
     print("LED controller: listening")
 
     while True:
         try:
+            # Reconnect MQTT if needed
+            if mqtt is None:
+                try:
+                    mqtt = mqtt_client.connect()
+                    for topic in MQTT_SUBSCRIBE_TOPICS:
+                        mqtt_client.subscribe(mqtt, topic, _mqtt_callback)
+                except Exception:
+                    print("MQTT reconnect failed, will retry")
+                    time.sleep(5)
+                    continue
+
             # Check WiFi
             wlan = network.WLAN(network.STA_IF)
             if not wlan.isconnected():
@@ -78,7 +98,8 @@ def main():
                 connect_wifi()
                 try:
                     mqtt = mqtt_client.connect()
-                    mqtt_client.subscribe(mqtt, MQTT_SUBSCRIBE_TOPIC, _mqtt_callback)
+                    for topic in MQTT_SUBSCRIBE_TOPICS:
+                        mqtt_client.subscribe(mqtt, topic, _mqtt_callback)
                 except Exception as e:
                     print("MQTT reconnect failed:", e)
                     time.sleep(1)
@@ -93,13 +114,19 @@ def main():
                 reset_boot_count()
                 boot_count_reset = True
 
+            if wdt:
+                wdt.feed()
+
         except OSError as e:
             print("Error:", e)
+            mqtt = None
+            time.sleep(5)
             try:
                 mqtt = mqtt_client.connect()
-                mqtt_client.subscribe(mqtt, MQTT_SUBSCRIBE_TOPIC, _mqtt_callback)
+                for topic in MQTT_SUBSCRIBE_TOPICS:
+                    mqtt_client.subscribe(mqtt, topic, _mqtt_callback)
             except Exception:
-                pass
+                print("MQTT reconnect failed, will retry next loop")
 
         except Exception as e:
             print("Unexpected error:", e)

@@ -30,10 +30,22 @@ BACKUP_DIR = "_backup"
 
 
 def read_file(path):
-    """Read a file's contents. Returns empty string if not found."""
+    """Read and strip a file's contents. For metadata files (hash, count).
+
+    Returns empty string if file not found.
+    """
     try:
         with open(path, "r") as f:
             return f.read().strip()
+    except OSError:
+        return ""
+
+
+def read_file_raw(path):
+    """Read a file's exact contents for backup/restore (preserves whitespace)."""
+    try:
+        with open(path, "r") as f:
+            return f.read()
     except OSError:
         return ""
 
@@ -110,7 +122,7 @@ def backup_files(filenames):
     _ensure_dir(BACKUP_DIR)
     for name in filenames:
         if file_exists(name):
-            content = read_file(name)
+            content = read_file_raw(name)
             write_file("{}/{}".format(BACKUP_DIR, name), content)
 
 
@@ -128,7 +140,7 @@ def restore_backup():
 
     restored = []
     for name in files:
-        content = read_file("{}/{}".format(BACKUP_DIR, name))
+        content = read_file_raw("{}/{}".format(BACKUP_DIR, name))
         write_file(name, content)
         restored.append(name)
     return restored
@@ -167,11 +179,12 @@ def fetch_manifest(ota_server, device_type):
     url = "http://{}/manifest/{}".format(ota_server, device_type)
     try:
         resp = requests.get(url)
-        if resp.status_code == 200:
-            data = json.loads(resp.text)
+        try:
+            if resp.status_code == 200:
+                return json.loads(resp.text)
+            return None
+        finally:
             resp.close()
-            return data
-        resp.close()
     except Exception as e:
         print("OTA: manifest fetch failed:", e)
     return None
@@ -181,15 +194,17 @@ def download_file(ota_server, device_type, filename):
     """Download a single file from the OTA server.
 
     Returns file content as string, or None on error.
+    NOTE: text-mode only — does not support binary .mpy files.
     """
     url = "http://{}/files/{}/{}".format(ota_server, device_type, filename)
     try:
         resp = requests.get(url)
-        if resp.status_code == 200:
-            content = resp.text
+        try:
+            if resp.status_code == 200:
+                return resp.text
+            return None
+        finally:
             resp.close()
-            return content
-        resp.close()
     except Exception as e:
         print("OTA: download failed for {}: {}".format(filename, e))
     return None

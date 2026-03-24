@@ -26,7 +26,7 @@ Both Pis communicate with an external MQTT broker at `192.168.50.24:1883`. Conta
 ## Prerequisites
 
 - **Ansible** (tested with core 2.14+). Install with `pip install ansible`.
-- **SSH access** to both Pis as the `pi` user (key-based auth recommended). The inventory resolves hostnames via Tailscale MagicDNS (`car-pi`, `base-pi`); update `inventory.yml` with IPs if needed.
+- **SSH access** to both Pis as the `car` user (key-based auth recommended). The inventory resolves hostnames via Tailscale MagicDNS (`car-pi`, `base-pi`); update `inventory.yml` with IPs if needed.
 - **Tailscale auth key** exported as `TAILSCALE_AUTH_KEY`. Generate a reusable key from the Tailscale admin console.
 
 ```sh
@@ -62,7 +62,7 @@ Applied to both Pis. Installs baseline infrastructure:
 
 - apt packages: `curl`, `gnupg`, `apt-transport-https`, `ca-certificates`, `cockpit`
 - Enables Cockpit (web admin on port 9090)
-- Installs Docker via `get.docker.com`, adds `pi` to the docker group, installs the Compose plugin
+- Installs Docker via `get.docker.com`, adds `car` to the docker group, installs the Compose plugin
 - Configures Docker to trust the insecure registry at `192.168.50.46:5000`
 - Installs Tailscale and brings it up with the provided auth key, using `100.90.165.127` as the exit node
 - Creates `/opt/vtms` as the compose project directory

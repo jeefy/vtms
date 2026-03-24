@@ -4,19 +4,7 @@ Pure math -- no hardware dependencies. Runs on both CPython (tests)
 and MicroPython (ESP32).
 """
 
-# Default reference voltage (can be overridden by config on ESP32)
-_V_REF = 3.3
-
-
-def adc_to_voltage(raw, bits=12):
-    """Convert raw ADC count to voltage.
-
-    ESP32 ADC is 12-bit (0-4095) with 11dB attenuation for ~0-3.3V range.
-    """
-    max_count = (1 << bits) - 1
-    if max_count == 0:
-        return 0.0
-    return raw / max_count * _V_REF
+from adc_utils import adc_to_voltage  # noqa: F401 (re-exported for main.py)
 
 
 def voltage_to_fuel_level(voltage, v_full, v_empty):

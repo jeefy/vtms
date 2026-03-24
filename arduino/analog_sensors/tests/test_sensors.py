@@ -8,6 +8,7 @@ import os
 
 # Add parent directory so we can import sensors module
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "common"))
 
 import pytest
 

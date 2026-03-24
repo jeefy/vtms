@@ -1,6 +1,6 @@
 services:
   vtms-client:
-    image: 192.168.50.46:5000/vtms:latest
+    image: {{ registry }}/vtms:latest
     container_name: vtms-client
     restart: always
     privileged: true
@@ -9,27 +9,29 @@ services:
       - /dev:/dev
       - vtms-data:/app/data
     environment:
-      - MQTT_SERVER=192.168.50.24
-      - MQTT_PORT=1883
+      - MQTT_SERVER={{ mqtt_server }}
+      - MQTT_PORT={{ mqtt_port }}
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
   vtms-ota:
-    image: 192.168.50.46:5000/vtms-ota:latest
+    image: {{ registry }}/vtms-ota:latest
     container_name: vtms-ota
     restart: always
     network_mode: host
     environment:
-      - MQTT_BROKER=192.168.50.24
-      - MQTT_PORT=1883
+      - MQTT_BROKER={{ mqtt_server }}
+      - MQTT_PORT={{ mqtt_port }}
       - HTTP_PORT=8266
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
   watchtower:
-    image: containrrr/watchtower
+    image: containrrr/watchtower:latest
     container_name: watchtower
     restart: always
+    environment:
+      - DOCKER_API_VERSION=1.45
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --interval 120 --cleanup

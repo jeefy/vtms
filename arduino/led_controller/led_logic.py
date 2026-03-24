@@ -9,11 +9,13 @@ from config import LED_PINS
 def parse_led_value(msg):
     """Parse MQTT message payload to pin value.
 
-    Returns 1 for "true", 0 for "false", None for unknown.
+    Accepts: true/false, 1/0, on/off (case-insensitive).
+    Returns 1, 0, or None for unrecognized values.
     """
-    if msg == b"true":
+    lower = msg.lower().strip()
+    if lower in (b"true", b"1", b"on"):
         return 1
-    elif msg == b"false":
+    elif lower in (b"false", b"0", b"off"):
         return 0
     return None
 

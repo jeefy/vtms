@@ -21,6 +21,8 @@ def connect_wifi():
         return True
 
     for ssid, password in WIFI_NETWORKS:
+        wlan.disconnect()
+        time.sleep(0.5)
         print("WiFi: trying", ssid)
         wlan.connect(ssid, password)
 
@@ -76,7 +78,8 @@ def _run_ota_check():
         print("OTA: update check failed, continuing with current firmware")
 
 
-# Run on boot
+# Run on boot — MicroPython executes boot.py before main.py.
+# Module cache prevents re-execution when main.py does 'from boot import connect_wifi'.
 connect_wifi()
 
 if wlan.isconnected():

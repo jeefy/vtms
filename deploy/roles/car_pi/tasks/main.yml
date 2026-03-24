@@ -14,16 +14,13 @@
     band {{ hotspot_band }}
     channel {{ hotspot_channel }}
   when: hotspot_check.rc != 0
-  become: yes
 
 - name: Set hotspot to auto-connect on boot
   ansible.builtin.command: nmcli connection modify Hotspot autoconnect yes
-  become: yes
   changed_when: false
 
 - name: Ensure hotspot is active
   ansible.builtin.command: nmcli connection up Hotspot
-  become: yes
   register: hotspot_up
   changed_when: "'activated' in hotspot_up.stdout"
   ignore_errors: yes
@@ -36,14 +33,12 @@
     sysctl_file: /etc/sysctl.d/99-ip-forward.conf
     reload: yes
     state: present
-  become: yes
 
 # ── NAT / iptables ─────────────────────────────────────
 - name: Install iptables-persistent
   ansible.builtin.apt:
     name: iptables-persistent
     state: present
-  become: yes
   environment:
     DEBIAN_FRONTEND: noninteractive
 
@@ -52,18 +47,16 @@
     src: iptables-restore.j2
     dest: /etc/iptables/rules.v4
     mode: "0644"
-  become: yes
   notify: Restore iptables
 
 # ── Docker Compose stack ───────────────────────────────
-- name: Copy car-pi docker-compose file
-  ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../docker-compose.car-pi.yml"
+- name: Deploy car-pi docker-compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
     dest: "{{ compose_dir }}/docker-compose.yml"
-    owner: pi
-    group: pi
+    owner: car
+    group: car
     mode: "0644"
-  become: yes
 
 - name: Pull latest images
   ansible.builtin.command: docker compose pull

@@ -1,6 +1,6 @@
 services:
   vtms-web:
-    image: 192.168.50.46:5000/vtms-web:latest
+    image: {{ registry }}/vtms-web:latest
     container_name: vtms-web
     restart: always
     network_mode: host
@@ -13,7 +13,7 @@ services:
       - "com.centurylinklabs.watchtower.enable=true"
 
   vtms-sdr:
-    image: 192.168.50.46:5000/vtms-sdr:latest
+    image: {{ registry }}/vtms-sdr:latest
     container_name: vtms-sdr
     restart: always
     privileged: true
@@ -21,14 +21,16 @@ services:
     volumes:
       - /dev/bus/usb:/dev/bus/usb
       - vtms-sdr-data:/app/data
-    command: ["record", "--freq", "462.5625"]
+    command: ["record", "--freq", "462.5625M"]
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
 
   watchtower:
-    image: containrrr/watchtower
+    image: containrrr/watchtower:latest
     container_name: watchtower
     restart: always
+    environment:
+      - DOCKER_API_VERSION=1.45
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --interval 120 --cleanup

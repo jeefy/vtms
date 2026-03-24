@@ -29,15 +29,45 @@ class TestParseMessage:
 
         assert parse_led_value(b"maybe") is None
 
-    def test_case_sensitive(self):
+    def test_case_insensitive_true(self):
         from led_logic import parse_led_value
 
-        assert parse_led_value(b"True") is None
+        assert parse_led_value(b"True") == 1
 
     def test_empty_returns_none(self):
         from led_logic import parse_led_value
 
         assert parse_led_value(b"") is None
+
+    def test_one_returns_high(self):
+        from led_logic import parse_led_value
+
+        assert parse_led_value(b"1") == 1
+
+    def test_zero_returns_low(self):
+        from led_logic import parse_led_value
+
+        assert parse_led_value(b"0") == 0
+
+    def test_on_returns_high(self):
+        from led_logic import parse_led_value
+
+        assert parse_led_value(b"on") == 1
+
+    def test_off_returns_low(self):
+        from led_logic import parse_led_value
+
+        assert parse_led_value(b"off") == 0
+
+    def test_uppercase_true(self):
+        from led_logic import parse_led_value
+
+        assert parse_led_value(b"TRUE") == 1
+
+    def test_uppercase_false(self):
+        from led_logic import parse_led_value
+
+        assert parse_led_value(b"FALSE") == 0
 
 
 class TestTopicToPin:

@@ -130,9 +130,10 @@ flash-micropython:
 
 generate-secrets: .env ## Generate secrets files for Arduino/MicroPython from .env
 	@echo "Generating arduino/common/secrets.py from .env …"
-	@. ./.env && printf '"""WiFi credentials — generated from .env, do NOT commit."""\n\nWIFI_NETWORKS = [\n    ("%s", "%s"),\n    ("%s", "%s"),\n]\n' \
+	@. ./.env && printf '"""Device secrets — generated from .env, do NOT commit."""\n\nWIFI_NETWORKS = [\n    ("%s", "%s"),\n    ("%s", "%s"),\n]\n\nMQTT_BROKER = "%s"\nMQTT_PORT = %s\nOTA_SERVER = "%s"\n' \
 		"$$WIFI_SSID_1" "$$WIFI_PASSWORD_1" \
 		"$$WIFI_SSID_2" "$$WIFI_PASSWORD_2" \
+		"$$MQTT_BROKER" "$$MQTT_PORT" "$$OTA_SERVER" \
 		> arduino/common/secrets.py
 	@echo "Generating arduino/arduino_secrets.h from .env …"
 	@. ./.env && printf '#ifndef ARDUINO_SECRETS_H\n#define ARDUINO_SECRETS_H\n#define SECRET_WIFI_SSID "%s"\n#define SECRET_WIFI_PASS "%s"\n#endif\n' \
@@ -143,6 +144,7 @@ generate-secrets: .env ## Generate secrets files for Arduino/MicroPython from .e
 flash-analog-sensors: generate-secrets
 	mpremote cp arduino/common/boot.py :boot.py
 	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
+	mpremote cp arduino/common/adc_utils.py :adc_utils.py
 	mpremote cp arduino/common/ota_update.py :ota_update.py
 	mpremote cp arduino/common/secrets.py :secrets.py
 	mpremote cp arduino/analog_sensors/config.py :config.py
@@ -163,6 +165,7 @@ flash-thermoprobe: generate-secrets
 flash-temp-sensor: generate-secrets
 	mpremote cp arduino/common/boot.py :boot.py
 	mpremote cp arduino/common/mqtt_client.py :mqtt_client.py
+	mpremote cp arduino/common/adc_utils.py :adc_utils.py
 	mpremote cp arduino/common/ota_update.py :ota_update.py
 	mpremote cp arduino/common/secrets.py :secrets.py
 	mpremote cp arduino/temp_sensor/config.py :config.py

@@ -73,10 +73,27 @@ def main():
     fuel_smoothed = None
     oil_smoothed = None
 
+    # Hardware watchdog — resets ESP32 if main loop hangs
+    try:
+        from machine import WDT
+
+        wdt = WDT(timeout=30000)  # 30 second timeout
+    except (ImportError, Exception):
+        wdt = None
+
     print("Analog sensors: monitoring started")
 
     while True:
         try:
+            # Reconnect MQTT if needed
+            if mqtt is None:
+                try:
+                    mqtt = mqtt_client.connect()
+                except Exception:
+                    print("MQTT reconnect failed, will retry")
+                    time.sleep(5)
+                    continue
+
             # Check WiFi
             wlan = network.WLAN(network.STA_IF)
             if not wlan.isconnected():
@@ -125,12 +142,17 @@ def main():
                 reset_boot_count()
                 boot_count_reset = True
 
+            if wdt:
+                wdt.feed()
+
         except OSError as e:
             print("Error:", e)
+            mqtt = None
+            time.sleep(5)
             try:
                 mqtt = mqtt_client.connect()
             except Exception:
-                pass
+                print("MQTT reconnect failed, will retry next loop")
 
         except Exception as e:
             print("Unexpected error:", e)

@@ -44,6 +44,12 @@ class TestFileHelpers:
         write_file("test.txt", "  hello  \n")
         assert read_file("test.txt") == "hello"
 
+    def test_read_raw_preserves_whitespace(self):
+        from ota_update import write_file, read_file_raw
+
+        write_file("test.txt", "  hello  \n")
+        assert read_file_raw("test.txt") == "  hello  \n"
+
     def test_file_exists_true(self):
         from ota_update import write_file, file_exists
 
@@ -251,6 +257,33 @@ class TestFetchManifest:
             result = fetch_manifest("10.42.0.1:8266", "unknown")
 
         assert result is None
+
+    def test_manifest_json_error_closes_response(self):
+        from ota_update import fetch_manifest
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = "not json"
+
+        with patch("ota_update.requests") as mock_req:
+            mock_req.get.return_value = mock_resp
+            result = fetch_manifest("server", "device")
+
+        assert result is None
+        mock_resp.close.assert_called_once()
+
+    def test_manifest_non200_closes_response(self):
+        from ota_update import fetch_manifest
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+
+        with patch("ota_update.requests") as mock_req:
+            mock_req.get.return_value = mock_resp
+            result = fetch_manifest("server", "device")
+
+        assert result is None
+        mock_resp.close.assert_called_once()
 
     def test_connection_error(self):
         from ota_update import fetch_manifest
