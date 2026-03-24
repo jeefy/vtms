@@ -99,8 +99,14 @@ export async function loadConfig(): Promise<AppConfig> {
     const raw = await readFile(CONFIG_PATH, "utf-8");
     const parsed = JSON.parse(raw);
     validateConfig(parsed);
-    // Merge with defaults so new fields (e.g. sdr) are present
-    return { ...structuredClone(DEFAULT_CONFIG), ...parsed };
+    const defaults = structuredClone(DEFAULT_CONFIG);
+    // Deep merge: per-section spread preserves nested objects
+    return {
+      mqtt: { ...defaults.mqtt, ...parsed.mqtt },
+      gopro: { ...defaults.gopro, ...parsed.gopro },
+      sdr: { ...defaults.sdr, ...(parsed.sdr ?? {}) },
+      gauges: parsed.gauges, // gauges is an array, take as-is from saved config
+    };
   } catch {
     console.warn("Failed to load config, using defaults");
     return structuredClone(DEFAULT_CONFIG);
