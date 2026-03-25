@@ -10,26 +10,32 @@
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "mock-data": "tsx scripts/mock-data.ts"
+    "mock:data": "tsx scripts/mock-data.ts",
+    "mock:gopro": "tsx scripts/mock-gopro.ts",
+    "mock": "concurrently -n data,gopro -c blue,green npm:mock:data npm:mock:gopro"
   },
   "dependencies": {
     "@cycjimmy/jsmpeg-player": "^6.1.2",
     "@types/leaflet": "^1.9.21",
+    "express": "^5.2.1",
     "leaflet": "^1.9.4",
     "mqtt": "^5.15.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-leaflet": "^5.0.0"
+    "react-leaflet": "^5.0.0",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.58.2",
+    "@types/express": "^5.0.6",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.0.1",
     "aedes": "^1.0.1",
+    "concurrently": "^9.2.1",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
