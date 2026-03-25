@@ -267,16 +267,3 @@ def check_and_update(ota_server, device_type):
     if apply_update(ota_server, device_type, manifest):
         return "updated"
     return "error"
-
-
-def is_on_hotspot(gateway_ip="10.42.0.1"):
-    """Check if connected to the car-pi hotspot by gateway IP."""
-    try:
-        import network
-
-        wlan = network.WLAN(network.STA_IF)
-        if not wlan.isconnected():
-            return False
-        return wlan.ifconfig()[2] == gateway_ip
-    except Exception:
-        return False

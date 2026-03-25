@@ -45,7 +45,6 @@ def connect_wifi():
 def _run_ota_check():
     """Run OTA update check and rollback detection."""
     from ota_update import (
-        is_on_hotspot,
         check_and_update,
         increment_boot_count,
         needs_rollback,
@@ -61,10 +60,6 @@ def _run_ota_check():
         from machine import reset
 
         reset()
-
-    if not is_on_hotspot():
-        print("OTA: not on hotspot, skipping update check")
-        return
 
     result = check_and_update(OTA_SERVER, DEVICE_TYPE)
     if result == "updated":
