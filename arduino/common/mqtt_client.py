@@ -28,6 +28,7 @@ from config import MQTT_BROKER, MQTT_PORT, MQTT_CLIENT_PREFIX
 import ota_update
 
 _cached_client_id = None
+_ota_pending = False
 
 
 def _client_id():
@@ -80,15 +81,16 @@ def _handle_status_request(client):
 
 
 def _handle_ota_notification(topic, msg):
-    """Check OTA hash notification and reboot if firmware has changed.
+    """Check OTA hash notification and flag for update if firmware has changed.
 
     Compares the announced hash against the locally stored hash.
-    If they differ (and a local hash exists), triggers machine.reset()
-    so boot.py can apply the OTA update.
+    If they differ (and a local hash exists), sets _ota_pending flag
+    so the main loop can safely apply the OTA update.
 
     Errors are caught and printed — OTA notification should never crash
     the main loop.
     """
+    global _ota_pending
     try:
         payload = ujson.loads(msg)
         server_hash = payload.get("hash", "")
@@ -103,10 +105,8 @@ def _handle_ota_notification(topic, msg):
             return
 
         if server_hash != local_hash:
-            print("OTA: new firmware detected, rebooting...")
-            import machine
-
-            machine.reset()
+            print("OTA: new firmware detected, flagging for update")
+            _ota_pending = True
     except Exception as e:
         print("OTA notification error:", e)
 
@@ -171,6 +171,27 @@ def publish_firmware_hash(client):
     topic = "lemons/firmware/{}".format(DEVICE_TYPE)
     publish(client, topic, fw_hash)
     print("Firmware hash:", fw_hash)
+
+
+def ota_pending():
+    """Check if an OTA update has been flagged by MQTT notification."""
+    return _ota_pending
+
+
+def run_pending_ota():
+    """If OTA is pending, attempt the update.
+
+    Returns "updated", "current", "error", or None if no OTA was pending.
+    Clears the pending flag regardless of outcome.
+    """
+    global _ota_pending
+    if not _ota_pending:
+        return None
+    _ota_pending = False
+    from config import OTA_SERVER, DEVICE_TYPE
+
+    print("OTA: running pending update check")
+    return ota_update.check_and_update(OTA_SERVER, DEVICE_TYPE)
 
 
 def publish(client, topic, value):

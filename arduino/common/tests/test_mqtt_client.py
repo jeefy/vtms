@@ -331,18 +331,24 @@ class TestExistingSubscribe:
         assert "subscribe_topic()" in captured.out
 
 
-class TestOtaNotificationReboot:
-    """Test _handle_ota_notification triggers reboot on hash mismatch."""
+class TestOtaNotificationFlag:
+    """Test _handle_ota_notification sets flag on hash mismatch."""
 
-    def test_reboots_when_hash_differs(self):
-        """OTA notification with a new hash triggers machine.reset()."""
+    def setup_method(self):
         import mqtt_client
 
-        mock_reset = MagicMock()
-        with (
-            patch("mqtt_client.ota_update") as mock_ota,
-            patch.dict("sys.modules", {"machine": MagicMock(reset=mock_reset)}),
-        ):
+        mqtt_client._ota_pending = False
+
+    def teardown_method(self):
+        import mqtt_client
+
+        mqtt_client._ota_pending = False
+
+    def test_sets_flag_when_hash_differs(self):
+        """OTA notification with a new hash sets _ota_pending flag."""
+        import mqtt_client
+
+        with patch("mqtt_client.ota_update") as mock_ota:
             mock_ota.read_file.return_value = "oldhash123"
 
             mqtt_client._handle_ota_notification(
@@ -350,17 +356,13 @@ class TestOtaNotificationReboot:
                 b'{"hash": "newhash456"}',
             )
 
-        mock_reset.assert_called_once()
+        assert mqtt_client._ota_pending is True
 
-    def test_no_reboot_when_hash_matches(self):
-        """OTA notification with the same hash does not reboot."""
+    def test_no_flag_when_hash_matches(self):
+        """OTA notification with the same hash does not set flag."""
         import mqtt_client
 
-        mock_reset = MagicMock()
-        with (
-            patch("mqtt_client.ota_update") as mock_ota,
-            patch.dict("sys.modules", {"machine": MagicMock(reset=mock_reset)}),
-        ):
+        with patch("mqtt_client.ota_update") as mock_ota:
             mock_ota.read_file.return_value = "samehash"
 
             mqtt_client._handle_ota_notification(
@@ -368,17 +370,13 @@ class TestOtaNotificationReboot:
                 b'{"hash": "samehash"}',
             )
 
-        mock_reset.assert_not_called()
+        assert mqtt_client._ota_pending is False
 
-    def test_no_reboot_when_no_local_hash(self):
-        """First boot with no local hash — don't reboot (boot.py already ran OTA)."""
+    def test_no_flag_when_no_local_hash(self):
+        """First boot with no local hash — don't flag (boot.py already ran OTA)."""
         import mqtt_client
 
-        mock_reset = MagicMock()
-        with (
-            patch("mqtt_client.ota_update") as mock_ota,
-            patch.dict("sys.modules", {"machine": MagicMock(reset=mock_reset)}),
-        ):
+        with patch("mqtt_client.ota_update") as mock_ota:
             mock_ota.read_file.return_value = ""
 
             mqtt_client._handle_ota_notification(
@@ -386,7 +384,7 @@ class TestOtaNotificationReboot:
                 b'{"hash": "newhash456"}',
             )
 
-        mock_reset.assert_not_called()
+        assert mqtt_client._ota_pending is False
 
     def test_bad_json_does_not_crash(self, capsys):
         """Malformed OTA notification payload is caught, not propagated."""
@@ -401,18 +399,15 @@ class TestOtaNotificationReboot:
                 b"not-json",
             )
 
+        assert mqtt_client._ota_pending is False
         captured = capsys.readouterr()
         assert "OTA notification error" in captured.out
 
-    def test_empty_server_hash_does_not_reboot(self):
-        """OTA notification with empty hash does not reboot."""
+    def test_empty_server_hash_does_not_flag(self):
+        """OTA notification with empty hash does not set flag."""
         import mqtt_client
 
-        mock_reset = MagicMock()
-        with (
-            patch("mqtt_client.ota_update") as mock_ota,
-            patch.dict("sys.modules", {"machine": MagicMock(reset=mock_reset)}),
-        ):
+        with patch("mqtt_client.ota_update") as mock_ota:
             mock_ota.read_file.return_value = "localhash"
 
             mqtt_client._handle_ota_notification(
@@ -420,7 +415,7 @@ class TestOtaNotificationReboot:
                 b'{"hash": ""}',
             )
 
-        mock_reset.assert_not_called()
+        assert mqtt_client._ota_pending is False
 
 
 class TestConnectSubscribesOtaNotify:
@@ -470,3 +465,91 @@ class TestConnectSubscribesOtaNotify:
                 )
         finally:
             mqtt_client.MQTTClient = None
+
+
+class TestRunPendingOta:
+    """Test ota_pending() and run_pending_ota() flag-based OTA."""
+
+    def setup_method(self):
+        import mqtt_client
+
+        mqtt_client._ota_pending = False
+
+    def teardown_method(self):
+        import mqtt_client
+
+        mqtt_client._ota_pending = False
+
+    def test_ota_pending_false_by_default(self):
+        """ota_pending() returns False when no notification received."""
+        import mqtt_client
+
+        assert mqtt_client.ota_pending() is False
+
+    def test_ota_pending_true_after_notification(self):
+        """ota_pending() returns True after hash-mismatch notification."""
+        import mqtt_client
+
+        mqtt_client._ota_pending = True
+        assert mqtt_client.ota_pending() is True
+
+    def test_run_pending_returns_none_when_not_pending(self):
+        """run_pending_ota() returns None and skips OTA when not pending."""
+        import mqtt_client
+
+        with patch("mqtt_client.ota_update") as mock_ota:
+            result = mqtt_client.run_pending_ota()
+
+        assert result is None
+        mock_ota.check_and_update.assert_not_called()
+
+    def test_run_pending_calls_check_and_update(self):
+        """run_pending_ota() calls check_and_update when OTA is pending."""
+        import mqtt_client
+
+        mqtt_client._ota_pending = True
+
+        with patch("mqtt_client.ota_update") as mock_ota:
+            mock_ota.check_and_update.return_value = "updated"
+            result = mqtt_client.run_pending_ota()
+
+        assert result == "updated"
+        mock_ota.check_and_update.assert_called_once_with(
+            "127.0.0.1:8266", "test_device"
+        )
+
+    def test_run_pending_clears_flag(self):
+        """run_pending_ota() clears _ota_pending regardless of result."""
+        import mqtt_client
+
+        mqtt_client._ota_pending = True
+
+        with patch("mqtt_client.ota_update") as mock_ota:
+            mock_ota.check_and_update.return_value = "error"
+            mqtt_client.run_pending_ota()
+
+        assert mqtt_client._ota_pending is False
+
+    def test_run_pending_returns_error(self):
+        """run_pending_ota() propagates error result from check_and_update."""
+        import mqtt_client
+
+        mqtt_client._ota_pending = True
+
+        with patch("mqtt_client.ota_update") as mock_ota:
+            mock_ota.check_and_update.return_value = "error"
+            result = mqtt_client.run_pending_ota()
+
+        assert result == "error"
+
+    def test_run_pending_returns_current(self):
+        """run_pending_ota() returns current if firmware already matches."""
+        import mqtt_client
+
+        mqtt_client._ota_pending = True
+
+        with patch("mqtt_client.ota_update") as mock_ota:
+            mock_ota.check_and_update.return_value = "current"
+            result = mqtt_client.run_pending_ota()
+
+        assert result == "current"
