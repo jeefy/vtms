@@ -172,8 +172,9 @@ define stage-common
 	    .flash-stage/
 endef
 
-# Copies staged files to device, resets, and cleans up
+# Copies staged files to device, resets boot count, resets, and cleans up
 define flash-staged
+	@printf '0' > .flash-stage/_boot_count
 	$(MPREMOTE) cp .flash-stage/* : + reset
 	@rm -rf .flash-stage
 endef
