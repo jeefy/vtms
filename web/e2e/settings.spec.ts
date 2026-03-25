@@ -12,7 +12,7 @@ import type { AppConfig } from "../src/types/config";
 
 /** Default config returned by the mocked API */
 const mockConfig: AppConfig = {
-  mqtt: { url: "ws://localhost:9001", topicPrefix: "lemons/" },
+  mqtt: { url: "ws://localhost:9090", topicPrefix: "lemons/" },
   gopro: { apiUrl: "http://localhost:3001", streamWsUrl: "ws://localhost:9002" },
   sdr: { audioWsUrl: "ws://localhost:9003" },
   gauges: [
@@ -97,7 +97,7 @@ test.describe("Settings Panel", () => {
 
     // MQTT fields should display mock values
     const mqttUrlInput = dashboardPage.getByRole("textbox", { name: "Broker URL" });
-    await expect(mqttUrlInput).toHaveValue("ws://localhost:9001");
+    await expect(mqttUrlInput).toHaveValue("ws://localhost:9090");
 
     const topicPrefixInput = dashboardPage.getByRole("textbox", { name: "Topic Prefix" });
     await expect(topicPrefixInput).toHaveValue("lemons/");

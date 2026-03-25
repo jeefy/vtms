@@ -113,7 +113,7 @@ function startVideoStream(wss: WebSocketServer): void {
       "-f",
       "lavfi",
       "-i",
-      "smptebars=size=320x240:rate=15",
+      "smptebars=size=320x240:rate=25",
       "-vf",
       "drawtext=text='%{localtime}':fontsize=20:fontcolor=white:x=10:y=10",
       "-c:v",

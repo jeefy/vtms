@@ -56,7 +56,7 @@ Config body shape (`AppConfig`):
 
 ```jsonc
 {
-  "mqtt": { "url": "ws://192.168.50.24:9001", "topicPrefix": "lemons/" },
+  "mqtt": { "url": "ws://192.168.50.24:9090", "topicPrefix": "lemons/" },
   "gopro": { "apiUrl": "http://localhost:3001", "streamWsUrl": "ws://localhost:9002" },
   "gauges": [
     { "id": "rpm", "topic": "lemons/RPM", "label": "RPM", "min": 0, "max": 8000, "unit": "rpm", "zones": [...] }

@@ -45,7 +45,7 @@ Set these in a `.env` file in `web/` or export them before starting the dev serv
 
 | Variable | Default | Description |
 |---|---|---|
-| `VITE_MQTT_URL` | `ws://192.168.50.24:9001` | MQTT broker WebSocket URL |
+| `VITE_MQTT_URL` | `ws://192.168.50.24:9090` | MQTT broker WebSocket URL |
 | `VITE_GOPRO_API_URL` | `http://localhost:3001` | GoPro control proxy API base URL |
 | `VITE_GOPRO_STREAM_URL` | `ws://localhost:9002` | GoPro MPEG stream WebSocket URL |
 
@@ -74,11 +74,11 @@ CI uses the `github` reporter and retries failed tests twice.
 The mock data script simulates a full drive session -- engine telemetry, temperatures, and GPS movement near Sonoma Raceway -- by publishing to an MQTT broker.
 
 ```sh
-# Defaults: broker at ws://192.168.50.24:9001, 500ms publish rate, runs forever
+# Defaults: broker at ws://192.168.50.24:9090, 500ms publish rate, runs forever
 pnpm --filter web mock-data
 
 # Custom broker, faster rate, limited duration
-npx tsx scripts/mock-data.ts --url ws://localhost:9001 --rate 200 --duration 60
+npx tsx scripts/mock-data.ts --url ws://localhost:9090 --rate 200 --duration 60
 ```
 
 The simulation cycles through idle, accelerating, cruising, decelerating, and braking phases with realistic jitter. Messages are published to `lemons/RPM`, `lemons/SPEED`, `lemons/COOLANT_TEMP`, `lemons/OIL_TEMP`, `lemons/THROTTLE_POS`, `lemons/ENGINE_LOAD`, and `lemons/gps/*`.

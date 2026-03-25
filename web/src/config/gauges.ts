@@ -76,7 +76,7 @@ export const defaultGaugeConfig: GaugeConfigEntry[] = [
 ];
 
 export const defaultMqttConfig: MqttConfig = {
-  url: import.meta.env.VITE_MQTT_URL ?? "ws://192.168.50.24:9001",
+  url: import.meta.env.VITE_MQTT_URL ?? "ws://192.168.50.24:9090",
   topicPrefix: "lemons/",
 };
 

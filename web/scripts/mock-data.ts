@@ -7,7 +7,7 @@
  * and as a data source importable by tests.
  *
  * Usage:
- *   npx tsx scripts/mock-data.ts                         # defaults to ws://localhost:9001
+ *   npx tsx scripts/mock-data.ts                         # defaults to ws://localhost:9090
  *   npx tsx scripts/mock-data.ts --url ws://host:port    # custom broker
  *   npx tsx scripts/mock-data.ts --rate 200              # publish every 200ms
  *   npx tsx scripts/mock-data.ts --duration 60           # run for 60 seconds
@@ -21,7 +21,7 @@ function getArg(name: string, fallback: string): string {
   return idx >= 0 && args[idx + 1] ? args[idx + 1] : fallback;
 }
 
-const BROKER_URL = getArg("url", process.env.VITE_MQTT_URL ?? "ws://192.168.50.24:9001");
+const BROKER_URL = getArg("url", process.env.VITE_MQTT_URL ?? "ws://192.168.50.24:9090");
 const RATE_MS = parseInt(getArg("rate", "500"), 10);
 const DURATION_S = parseInt(getArg("duration", "0"), 10); // 0 = infinite
 const TOPIC_PREFIX = "lemons/";

@@ -560,6 +560,12 @@ body,
   gap: 8px;
 }
 
+.settings-footer-left {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .settings-btn {
   padding: 6px 16px;
   border-radius: 4px;

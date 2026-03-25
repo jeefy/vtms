@@ -29,7 +29,7 @@ function readTestEnv(): { VTMS_MQTT_URL: string; VTMS_BASE_URL: string } {
   }
 
   return {
-    VTMS_MQTT_URL: "ws://localhost:9001",
+    VTMS_MQTT_URL: "ws://localhost:9090",
     VTMS_BASE_URL: "http://localhost:5173",
   };
 }

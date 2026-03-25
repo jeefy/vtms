@@ -32,7 +32,7 @@ export interface AppConfig {
 
 const DEFAULT_CONFIG: AppConfig = {
   mqtt: {
-    url: "ws://192.168.50.24:9001",
+    url: "ws://192.168.50.24:9090",
     topicPrefix: "lemons/",
   },
   gopro: {

@@ -11,7 +11,7 @@ export class MqttTestClient {
   private url: string;
 
   constructor(url?: string) {
-    this.url = url ?? process.env.VTMS_MQTT_URL ?? "ws://localhost:9001";
+    this.url = url ?? process.env.VTMS_MQTT_URL ?? "ws://localhost:9090";
   }
 
   /** Connect to the broker. Resolves when connected. */

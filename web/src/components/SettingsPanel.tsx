@@ -1,5 +1,63 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { AppConfig, GaugeConfigEntry, GoProConfig, MqttConfig, SDRConfig } from "../types/config";
+
+/**
+ * Validate that a parsed JSON value has the shape of an AppConfig.
+ * Returns null on success or an error message string.
+ */
+function validateImportedConfig(value: unknown): string | null {
+  if (typeof value !== "object" || value === null) return "Config must be a JSON object";
+  const c = value as Record<string, unknown>;
+
+  // mqtt
+  if (!c.mqtt || typeof c.mqtt !== "object") return "Missing 'mqtt' section";
+  const mqtt = c.mqtt as Record<string, unknown>;
+  if (typeof mqtt.url !== "string") return "mqtt.url must be a string";
+  if (typeof mqtt.topicPrefix !== "string") return "mqtt.topicPrefix must be a string";
+
+  // gopro
+  if (!c.gopro || typeof c.gopro !== "object") return "Missing 'gopro' section";
+  const gopro = c.gopro as Record<string, unknown>;
+  if (typeof gopro.apiUrl !== "string") return "gopro.apiUrl must be a string";
+  if (typeof gopro.streamWsUrl !== "string") return "gopro.streamWsUrl must be a string";
+
+  // sdr (optional for backward compat)
+  if (c.sdr !== undefined) {
+    if (typeof c.sdr !== "object" || c.sdr === null) return "sdr must be an object";
+    const sdr = c.sdr as Record<string, unknown>;
+    if (typeof sdr.audioWsUrl !== "string") return "sdr.audioWsUrl must be a string";
+  }
+
+  // gauges
+  if (!Array.isArray(c.gauges)) return "gauges must be an array";
+  for (let i = 0; i < c.gauges.length; i++) {
+    const g = c.gauges[i];
+    if (typeof g !== "object" || g === null) return `gauges[${i}] must be an object`;
+    const gauge = g as Record<string, unknown>;
+    if (typeof gauge.id !== "string") return `gauges[${i}].id must be a string`;
+    if (typeof gauge.topic !== "string") return `gauges[${i}].topic must be a string`;
+    if (typeof gauge.label !== "string") return `gauges[${i}].label must be a string`;
+    if (typeof gauge.min !== "number") return `gauges[${i}].min must be a number`;
+    if (typeof gauge.max !== "number") return `gauges[${i}].max must be a number`;
+    if (gauge.min >= gauge.max) return `gauges[${i}]: min must be less than max`;
+    if (typeof gauge.unit !== "string") return `gauges[${i}].unit must be a string`;
+    if (gauge.zones !== undefined) {
+      if (!Array.isArray(gauge.zones)) return `gauges[${i}].zones must be an array`;
+      for (let zi = 0; zi < gauge.zones.length; zi++) {
+        const z = gauge.zones[zi];
+        if (typeof z !== "object" || z === null) return `gauges[${i}].zones[${zi}] must be an object`;
+        if (typeof z.from !== "number") return `gauges[${i}].zones[${zi}].from must be a number`;
+        if (typeof z.to !== "number") return `gauges[${i}].zones[${zi}].to must be a number`;
+        if (typeof z.color !== "string") return `gauges[${i}].zones[${zi}].color must be a string`;
+      }
+    }
+    if (gauge.decimals !== undefined && typeof gauge.decimals !== "number") {
+      return `gauges[${i}].decimals must be a number`;
+    }
+  }
+
+  return null;
+}
 
 interface SettingsPanelProps {
   config: AppConfig;
@@ -14,6 +72,55 @@ export function SettingsPanel({ config, onSave, onReset, onClose }: SettingsPane
   const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"connection" | "gauges">("connection");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = useCallback(() => {
+    const json = JSON.stringify(draft, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "vtms-config.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [draft]);
+
+  const handleImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result as string);
+        const validationError = validateImportedConfig(parsed);
+        if (validationError) {
+          setError(`Invalid config file: ${validationError}`);
+          return;
+        }
+
+        const imported = parsed as AppConfig;
+        const summary = [
+          `MQTT: ${imported.mqtt.url}`,
+          `GoPro API: ${imported.gopro.apiUrl}`,
+          `Gauges: ${imported.gauges.length} (${imported.gauges.map((g) => g.label).join(", ")})`,
+        ].join("\n");
+
+        if (window.confirm(`Import this config?\n\n${summary}\n\nThis will replace the current settings in the form. You can review and Save, or Cancel to discard.`)) {
+          setDraft(structuredClone(imported));
+          setError(null);
+        }
+      } catch {
+        setError("Failed to parse config file: invalid JSON");
+      } finally {
+        // Reset input so the same file can be re-imported
+        e.target.value = "";
+      }
+    };
+    reader.readAsText(file);
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -380,9 +487,25 @@ export function SettingsPanel({ config, onSave, onReset, onClose }: SettingsPane
         {error && <div className="settings-error">{error}</div>}
 
         <div className="settings-footer">
-          <button className="settings-btn settings-btn-secondary" onClick={handleReset} disabled={saving || resetting}>
-            {resetting ? "Resetting..." : "Reset to Defaults"}
-          </button>
+          <div className="settings-footer-left">
+            <button className="settings-btn settings-btn-secondary" onClick={handleReset} disabled={saving || resetting}>
+              {resetting ? "Resetting..." : "Reset to Defaults"}
+            </button>
+            <button className="settings-btn settings-btn-secondary" onClick={handleExport} disabled={saving || resetting}>
+              Export
+            </button>
+            <button className="settings-btn settings-btn-secondary" onClick={() => fileInputRef.current?.click()} disabled={saving || resetting}>
+              Import
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleImport}
+              style={{ display: "none" }}
+              aria-label="Import config file"
+            />
+          </div>
           <div className="settings-footer-right">
             <button className="settings-btn settings-btn-secondary" onClick={onClose} disabled={saving || resetting}>
               Cancel
