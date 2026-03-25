@@ -169,7 +169,7 @@ def publish_firmware_hash(client):
     if not fw_hash:
         fw_hash = "unknown"
     topic = "lemons/firmware/{}".format(DEVICE_TYPE)
-    publish(client, topic, fw_hash)
+    publish(client, topic, fw_hash, retain=True)
     print("Firmware hash:", fw_hash)
 
 
@@ -194,14 +194,15 @@ def run_pending_ota():
     return ota_update.check_and_update(OTA_SERVER, DEVICE_TYPE)
 
 
-def publish(client, topic, value):
+def publish(client, topic, value, retain=False):
     """Publish a value to an MQTT topic.
 
     topic: full topic string (e.g. "lemons/temp/oil_F")
     value: will be converted to string
+    retain: if True, broker stores the message for new subscribers
     """
     msg = str(value)
-    client.publish(topic.encode(), msg.encode())
+    client.publish(topic.encode(), msg.encode(), retain=retain)
 
 
 def subscribe(client, topic, callback):

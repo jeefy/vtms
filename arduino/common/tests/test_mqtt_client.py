@@ -553,3 +553,37 @@ class TestRunPendingOta:
             result = mqtt_client.run_pending_ota()
 
         assert result == "current"
+
+
+class TestPublishFirmwareHash:
+    """Test publish_firmware_hash publishes retained hash."""
+
+    def test_publishes_hash_with_retain(self):
+        """publish_firmware_hash publishes hash as retained message."""
+        import mqtt_client
+
+        mock_client = MagicMock()
+
+        with patch("ota_update.read_file", return_value="abc123hash"):
+            mqtt_client.publish_firmware_hash(mock_client)
+
+        mock_client.publish.assert_called_once_with(
+            b"lemons/firmware/test_device",
+            b"abc123hash",
+            retain=True,
+        )
+
+    def test_publishes_unknown_when_no_hash(self):
+        """publish_firmware_hash publishes 'unknown' when no hash file."""
+        import mqtt_client
+
+        mock_client = MagicMock()
+
+        with patch("ota_update.read_file", return_value=""):
+            mqtt_client.publish_firmware_hash(mock_client)
+
+        mock_client.publish.assert_called_once_with(
+            b"lemons/firmware/test_device",
+            b"unknown",
+            retain=True,
+        )
