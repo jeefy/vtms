@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AppConfig, GaugeConfigEntry, GoProConfig, MqttConfig } from "../types/config";
+import type { AppConfig, GaugeConfigEntry, GoProConfig, MqttConfig, SDRConfig } from "../types/config";
 
 interface SettingsPanelProps {
   config: AppConfig;
@@ -57,6 +57,10 @@ export function SettingsPanel({ config, onSave, onReset, onClose }: SettingsPane
     setDraft((d) => ({ ...d, gopro: { ...d.gopro, [field]: value } }));
   };
 
+  const updateSDR = (field: keyof SDRConfig, value: string) => {
+    setDraft((d) => ({ ...d, sdr: { ...d.sdr, [field]: value } }));
+  };
+
   const updateGauge = (index: number, field: string, value: string | number) => {
     setDraft((d) => {
       const gauges = [...d.gauges];
@@ -91,6 +95,47 @@ export function SettingsPanel({ config, onSave, onReset, onClose }: SettingsPane
     setDraft((d) => {
       const gauges = [...d.gauges];
       [gauges[index], gauges[target]] = [gauges[target], gauges[index]];
+      return { ...d, gauges };
+    });
+  };
+
+  const addZone = (gaugeIndex: number) => {
+    setDraft((d) => {
+      const gauges = [...d.gauges];
+      const gauge = { ...gauges[gaugeIndex] };
+      const zones = [...(gauge.zones ?? [])];
+      zones.push({ from: gauge.min, to: gauge.max, color: "#4ade80" });
+      gauge.zones = zones;
+      gauges[gaugeIndex] = gauge;
+      return { ...d, gauges };
+    });
+  };
+
+  const removeZone = (gaugeIndex: number, zoneIndex: number) => {
+    setDraft((d) => {
+      const gauges = [...d.gauges];
+      const gauge = { ...gauges[gaugeIndex] };
+      const zones = [...(gauge.zones ?? [])];
+      zones.splice(zoneIndex, 1);
+      gauge.zones = zones.length > 0 ? zones : undefined;
+      gauges[gaugeIndex] = gauge;
+      return { ...d, gauges };
+    });
+  };
+
+  const updateZone = (
+    gaugeIndex: number,
+    zoneIndex: number,
+    field: string,
+    value: string | number,
+  ) => {
+    setDraft((d) => {
+      const gauges = [...d.gauges];
+      const gauge = { ...gauges[gaugeIndex] };
+      const zones = [...(gauge.zones ?? [])];
+      zones[zoneIndex] = { ...zones[zoneIndex], [field]: value };
+      gauge.zones = zones;
+      gauges[gaugeIndex] = gauge;
       return { ...d, gauges };
     });
   };
@@ -159,6 +204,17 @@ export function SettingsPanel({ config, onSave, onReset, onClose }: SettingsPane
                   type="text"
                   value={draft.gopro.streamWsUrl}
                   onChange={(e) => updateGoPro("streamWsUrl", e.target.value)}
+                  placeholder="ws://host:port"
+                />
+              </label>
+
+              <h3>SDR</h3>
+              <label className="settings-field">
+                <span>Audio WS URL</span>
+                <input
+                  type="text"
+                  value={draft.sdr.audioWsUrl}
+                  onChange={(e) => updateSDR("audioWsUrl", e.target.value)}
                   placeholder="ws://host:port"
                 />
               </label>
@@ -242,9 +298,77 @@ export function SettingsPanel({ config, onSave, onReset, onClose }: SettingsPane
                           placeholder="rpm"
                         />
                       </label>
+                      <label className="settings-field">
+                        <span>Decimals</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={3}
+                          value={gauge.decimals ?? 0}
+                          onChange={(e) => updateGauge(i, "decimals", Number(e.target.value))}
+                        />
+                      </label>
+                    </div>
+                    </div>
+                    <div className="settings-zones">
+                      <div className="settings-zones-header">
+                        <span className="settings-zones-label">Color Zones</span>
+                        <button
+                          className="settings-zone-add-btn"
+                          onClick={() => addZone(i)}
+                          type="button"
+                        >
+                          + Zone
+                        </button>
+                      </div>
+                      {(gauge.zones ?? []).map((zone, zi) => (
+                        <div key={zi} className="settings-zone-row">
+                          <label className="settings-field">
+                            <span>From</span>
+                            <input
+                              type="number"
+                              value={zone.from}
+                              onChange={(e) => updateZone(i, zi, "from", Number(e.target.value))}
+                            />
+                          </label>
+                          <label className="settings-field">
+                            <span>To</span>
+                            <input
+                              type="number"
+                              value={zone.to}
+                              onChange={(e) => updateZone(i, zi, "to", Number(e.target.value))}
+                            />
+                          </label>
+                          <label className="settings-field settings-field-color">
+                            <span>Color</span>
+                            <div className="settings-color-input">
+                              <input
+                                type="color"
+                                value={zone.color}
+                                onChange={(e) => updateZone(i, zi, "color", e.target.value)}
+                              />
+                              <input
+                                type="text"
+                                value={zone.color}
+                                onChange={(e) => updateZone(i, zi, "color", e.target.value)}
+                                placeholder="#4ade80"
+                                className="settings-color-text"
+                              />
+                            </div>
+                          </label>
+                          <button
+                            className="settings-zone-remove-btn"
+                            onClick={() => removeZone(i, zi)}
+                            aria-label="Remove zone"
+                            title="Remove zone"
+                            type="button"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </div>
               ))}
               <button className="settings-add-btn" onClick={addGauge}>
                 + Add Gauge

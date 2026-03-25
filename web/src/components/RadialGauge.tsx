@@ -194,6 +194,8 @@ export default React.memo(RadialGauge, (prev, next) => {
     prev.config.min === next.config.min &&
     prev.config.max === next.config.max &&
     prev.config.label === next.config.label &&
-    prev.config.unit === next.config.unit
+    prev.config.unit === next.config.unit &&
+    prev.config.decimals === next.config.decimals &&
+    prev.config.zones === next.config.zones
   );
 });
