@@ -119,6 +119,12 @@ def main():
             # Process any pending status requests
             mqtt.check_msg()
 
+            # Check for MQTT-triggered OTA update
+            ota_result = mqtt_client.run_pending_ota()
+            if ota_result == "updated":
+                print("OTA: update applied, rebooting...")
+                reset()
+
             # Read ADC (voltage after HiLetgo 5:1 divider)
             fuel_raw = fuel_adc.read()
             oil_raw = oil_adc.read()

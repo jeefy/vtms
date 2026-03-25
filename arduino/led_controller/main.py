@@ -110,6 +110,12 @@ def main():
             # Process incoming messages
             mqtt.check_msg()
 
+            # Check for MQTT-triggered OTA update
+            ota_result = mqtt_client.run_pending_ota()
+            if ota_result == "updated":
+                print("OTA: update applied, rebooting...")
+                reset()
+
             if not boot_count_reset:
                 from ota_update import reset_boot_count
 

@@ -84,6 +84,12 @@ def main():
             # Process any pending status requests
             mqtt.check_msg()
 
+            # Check for MQTT-triggered OTA update
+            ota_result = mqtt_client.run_pending_ota()
+            if ota_result == "updated":
+                print("OTA: update applied, rebooting...")
+                reset()
+
             # Read thermocouple
             raw = read_raw(clk, cs, do)
 
