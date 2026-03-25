@@ -35,6 +35,10 @@ interface DriveState {
   engineLoad: number; // %
   coolantTemp: number; // °C
   oilTemp: number; // °C
+  fuelLevel: number; // 0-100%
+  oilPressure: number; // PSI
+  oilTempF: number; // Fahrenheit thermoprobe
+  transmissionTemp: number; // Fahrenheit
   gpsLat: number;
   gpsLon: number;
   gpsSpeed: number; // m/s
@@ -53,6 +57,10 @@ function initialState(): DriveState {
     engineLoad: 15,
     coolantTemp: 45,
     oilTemp: 35,
+    fuelLevel: 95,
+    oilPressure: 40,
+    oilTempF: 95,
+    transmissionTemp: 100,
     // Start near Sonoma Raceway (common for Lemons)
     gpsLat: 38.161,
     gpsLon: -122.455,
@@ -139,6 +147,30 @@ export function advanceDriveState(state: DriveState): DriveState {
   s.gpsSpeed = speedMs;
   s.gpsAlt = clamp(s.gpsAlt + jitter() * 0.5, 0, 50);
 
+  // Fuel simulation - slowly decreases over time
+  s.fuelLevel = clamp(s.fuelLevel - 0.01 - Math.random() * 0.005, 0, 100);
+
+  // Oil pressure - correlates with RPM
+  const targetPressure = 20 + (s.rpm / 8000) * 50;
+  s.oilPressure = clamp(
+    s.oilPressure + (targetPressure - s.oilPressure) * 0.1 + jitter() * 2,
+    15, 80
+  );
+
+  // Oil temp (Fahrenheit thermoprobe) - tracks Celsius oil temp
+  const targetOilF = s.oilTemp * 9 / 5 + 32;
+  s.oilTempF = clamp(
+    s.oilTempF + (targetOilF - s.oilTempF) * 0.05 + jitter() * 0.5,
+    80, 300
+  );
+
+  // Transmission temp - rises under load, cools at idle
+  const targetTransTemp = s.phase === "idle" ? 150 : 180 + s.engineLoad * 0.5;
+  s.transmissionTemp = clamp(
+    s.transmissionTemp + (targetTransTemp - s.transmissionTemp) * 0.02 + jitter() * 0.5,
+    80, 280
+  );
+
   return s;
 }
 
@@ -149,15 +181,26 @@ function clamp(value: number, min: number, max: number): number {
 /** Get all MQTT messages for the current state */
 export function stateToMessages(state: DriveState): Array<{ topic: string; payload: string }> {
   return [
+    // OBD metrics (existing)
     { topic: `${TOPIC_PREFIX}RPM`, payload: `${Math.round(state.rpm)} revolutions_per_minute` },
     { topic: `${TOPIC_PREFIX}SPEED`, payload: `${Math.round(state.speed)} kph` },
     { topic: `${TOPIC_PREFIX}COOLANT_TEMP`, payload: `${state.coolantTemp.toFixed(1)} degC` },
     { topic: `${TOPIC_PREFIX}OIL_TEMP`, payload: `${state.oilTemp.toFixed(1)} degC` },
     { topic: `${TOPIC_PREFIX}THROTTLE_POS`, payload: `${Math.round(state.throttle)} percent` },
     { topic: `${TOPIC_PREFIX}ENGINE_LOAD`, payload: `${Math.round(state.engineLoad)} percent` },
+    // GPS (existing + new individual fields)
     { topic: `${TOPIC_PREFIX}gps/pos`, payload: `${state.gpsLat.toFixed(6)},${state.gpsLon.toFixed(6)}` },
-    { topic: `${TOPIC_PREFIX}gps/speed`, payload: `${state.gpsSpeed.toFixed(2)}` },
-    { topic: `${TOPIC_PREFIX}gps/altitude`, payload: `${state.gpsAlt.toFixed(1)}` },
+    { topic: `${TOPIC_PREFIX}gps/latitude`, payload: state.gpsLat.toFixed(6) },
+    { topic: `${TOPIC_PREFIX}gps/longitude`, payload: state.gpsLon.toFixed(6) },
+    { topic: `${TOPIC_PREFIX}gps/speed`, payload: state.gpsSpeed.toFixed(2) },
+    { topic: `${TOPIC_PREFIX}gps/altitude`, payload: state.gpsAlt.toFixed(1) },
+    { topic: `${TOPIC_PREFIX}gps/track`, payload: state.heading.toFixed(1) },
+    // ESP32 analog sensors
+    { topic: `${TOPIC_PREFIX}analog/fuel_level`, payload: state.fuelLevel.toFixed(1) },
+    { topic: `${TOPIC_PREFIX}analog/oil_pressure`, payload: state.oilPressure.toFixed(1) },
+    // ESP32 temperature sensors
+    { topic: `${TOPIC_PREFIX}temp/oil_F`, payload: state.oilTempF.toFixed(1) },
+    { topic: `${TOPIC_PREFIX}temp/transmission`, payload: state.transmissionTemp.toFixed(1) },
   ];
 }
 
@@ -184,6 +227,19 @@ async function main() {
   let messageCount = 0;
   const startTime = Date.now();
 
+  // Publish SDR state once (retained) to populate SDR panel
+  const sdrState: Record<string, string> = {
+    freq: "462562500",
+    mod: "FM",
+    gain: "40",
+    squelch_db: "-30",
+    status: "idle",
+    signal_power: "-80.5",
+  };
+  for (const [key, val] of Object.entries(sdrState)) {
+    client.publish(`${TOPIC_PREFIX}sdr/state/${key}`, val, { retain: true });
+  }
+
   const interval = setInterval(() => {
     // Check duration limit
     if (DURATION_S > 0 && (Date.now() - startTime) / 1000 >= DURATION_S) {
@@ -198,6 +254,19 @@ async function main() {
 
     for (const msg of messages) {
       client.publish(msg.topic, msg.payload);
+    }
+
+    // Publish health heartbeat every 10 ticks (~5s at default rate)
+    if (state.tick % 10 === 0) {
+      client.publish(
+        `${TOPIC_PREFIX}health`,
+        JSON.stringify({
+          mqtt_connected: true,
+          obd_connected: true,
+          timestamp: new Date().toISOString(),
+        })
+      );
+      messageCount++;
     }
 
     messageCount += messages.length;
